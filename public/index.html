@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basari Akademi - Ogrenci Takip</title>
+  <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#eef3f9;--surface:#fff;--line:#d4dfed;--text:#07162f;--muted:#8897b5;--primary:#2667ea;--purple:#6d3fe0;--blue:#38bdf8;--orange:#ff8b38;--green:#009a70;--red:#c84e4e;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+    .login{min-height:100vh;display:grid;place-items:center;padding:20px}.login-box{width:min(460px,100%);background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}.brand{display:flex;gap:14px;align-items:center;font-weight:900;letter-spacing:.12em;color:var(--purple)}.brand-mark{width:50px;height:50px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#4b67ff,#8138df);color:white;font-size:24px;letter-spacing:-2px}.brand small{display:block;color:#203052;letter-spacing:.28em}.tabs{display:grid;grid-template-columns:1fr 1fr;background:#eef3fb;border:1px solid var(--line);border-radius:10px;padding:4px;margin:22px 0 14px}.tabs button{border:0;border-radius:8px;background:transparent;padding:10px;font-weight:800}.tabs button.active{background:#fff;color:var(--primary)}.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:12px;color:var(--muted);font-weight:900}.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:8px;padding:11px;background:#fff;min-height:42px}.btn{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);padding:10px 12px;min-height:40px;font-weight:850;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn.primary{background:var(--primary);border-color:var(--primary);color:white}.btn.danger{color:var(--red)}
+    .app{display:grid;grid-template-columns:276px 1fr;min-height:100vh}.sidebar{position:sticky;top:0;height:100vh;background:#fff;border-right:1px solid var(--line);padding:18px 14px;overflow:auto}.side-title{font-size:11px;color:#9aa8c1;margin:28px 0 9px;text-transform:uppercase;font-weight:900;letter-spacing:.16em}.nav{display:grid;gap:7px}.nav button{width:100%;border:1px solid transparent;background:transparent;border-radius:8px;padding:12px 10px;text-align:left;font-weight:700;color:#22324d}.nav button.active{background:#eaf1ff;border-color:#cbdaf6;color:#1058ff}.main{min-width:0}.topbar{position:sticky;top:0;z-index:5;min-height:62px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 30px}.topbar strong{font-size:20px}.muted{color:var(--muted)}.top-actions{display:flex;gap:10px;align-items:center}.search{height:40px;width:min(270px,28vw);min-width:190px;display:flex;align-items:center;border:1px solid #c6d3e4;background:#eef3fa;border-radius:8px;padding:0 12px}.search input{border:0;outline:0;background:transparent;width:100%}.page{display:none;padding:32px}.page.active{display:block}.grid{display:grid;gap:16px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.grid.four{grid-template-columns:repeat(4,minmax(220px,1fr))}.panel,.stat{background:#fff;border:1px solid var(--line);border-radius:12px}.panel{padding:20px}.stat{padding:22px;min-height:150px;display:grid;align-content:space-between;position:relative;overflow:hidden}.stat:after{content:"";position:absolute;right:-18px;top:-28px;width:88px;height:96px;border-radius:999px;background:var(--blob,#eef2ff)}.stat strong{font-size:30px}.stat small{color:var(--muted)}.section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px}.section-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,240px));gap:16px}.student-card{background:#e7edf5;border:1px solid #d4dfed;border-top:3px solid var(--card,#38bdf8);border-radius:14px;padding:22px 20px;min-height:294px;display:grid;gap:16px;cursor:pointer}.student-card:hover{box-shadow:0 16px 24px rgba(30,52,95,.12);transform:translateY(-2px)}.card-top{display:flex;justify-content:space-between}.avatar{width:54px;height:54px;border-radius:14px;background:var(--card,#38bdf8);color:white;display:grid;place-items:center;font-size:21px;font-weight:900}.pill{background:#c9f1e8;color:#008d62;font-size:12px;font-weight:900;border-radius:999px;padding:4px 11px}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mini{background:white;border-radius:8px;padding:10px 11px;min-height:58px}.mini strong{display:block;color:#009a70}.mini.orange strong{color:#e37000}.mini.dark strong{color:#07162f}table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left}th{font-size:12px;color:var(--muted);text-transform:uppercase}.table-wrap{overflow:auto}.badge{border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;background:#eef3f5;color:var(--muted)}.good{background:#e5f4eb;color:#008d62}.warn{background:#fff4df;color:#c47a00}.bad{background:#fdebec;color:#c84e4e}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.wide{grid-column:span 2}.chart{height:270px}.modal{position:fixed;inset:0;background:rgba(12,20,28,.42);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.modal-box{width:min(900px,100%);max-height:88vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.mobile-menu{display:none}
+    @media(max-width:1050px){.app{grid-template-columns:1fr}.sidebar{position:fixed;z-index:20;transform:translateX(-100%);transition:.2s;width:min(310px,88vw)}.sidebar.open{transform:translateX(0)}.mobile-menu{display:inline-flex}.grid.four,.grid.two{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr 1fr}.page{padding:18px}.search{display:none}}
+    @media(max-width:680px){.grid.four,.grid.two,.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}.topbar{padding:10px 14px}.cards{grid-template-columns:1fr}.student-card{min-height:auto}}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><h3 id="modalTitle"></h3><button class="btn" onclick="closeModal()">Kapat</button></div><div id="modalBody"></div></div></div>
+  <script>
+    const api = {
+      token: localStorage.getItem("token") || "",
+      async req(path, options = {}) {
+        const res = await fetch(path, { ...options, headers: { "Content-Type": "application/json", Authorization: "Bearer " + api.token, ...(options.headers || {}) } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Islem tamamlanamadi.");
+        return data;
+      }
+    };
+    let state = { students: [], subjects: [], entries: [], exams: [], mistakes: [], notes: [], upcomingExams: [] };
+    let user = JSON.parse(localStorage.getItem("user") || "null");
+    let activeStudentId = localStorage.getItem("activeStudentId") || "";
+    let page = "dashboard";
+    let contentEl = null;
+    const mistakeTypes = ["Bilgi eksikligi", "Dikkatsizlik", "Islem hatasi", "Konuyu karistirma", "Sure yetismedi", "Soruyu yanlis okuma", "Yorum hatasi"];
+    const colors = ["#38bdf8", "#4f83f1", "#ff8b38", "#32b8e8", "#6d3fe0"];
+    let charts = [];
+
+    const root = document.getElementById("root");
+    function today(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10)}
+    function fmt(n){return Number(n||0).toLocaleString("tr-TR")}
+    function net(c,w){return +(Number(c)-Number(w)/3).toFixed(2)}
+    function examNet(e){return +(e.details||[]).reduce((s,d)=>s+net(d.correct,d.wrong),0).toFixed(2)}
+    function initials(n){return n.split(" ").map(x=>x[0]).join("").slice(0,2).toLocaleUpperCase("tr-TR")}
+    function entries(id=activeStudentId){return state.entries.filter(e=>e.studentId===id)}
+    function exams(id=activeStudentId){return state.exams.filter(e=>e.studentId===id)}
+    function mistakes(id=activeStudentId){return state.mistakes.filter(e=>e.studentId===id)}
+    function student(){return state.students.find(s=>s.id===activeStudentId)||state.students[0]}
+    function totalQuestions(id){return entries(id).reduce((s,e)=>s+Number(e.total),0)}
+    function success(id){const es=entries(id);const c=es.reduce((s,e)=>s+Number(e.correct),0);const t=es.reduce((s,e)=>s+Number(e.total),0);return t?Math.round(c/t*100):0}
+    function weekTotal(id){const start=new Date();start.setDate(start.getDate()-start.getDay()+1);return entries(id).filter(e=>new Date(e.date+"T12:00")>=start).reduce((s,e)=>s+Number(e.total),0)}
+    function lastLabel(e){if(!e)return"Yok";const diff=Math.floor((new Date(today()+"T12:00")-new Date(e.date+"T12:00"))/86400000);return diff<=0?"Bugun":`${diff}g once`}
+    function group(list,key,val=x=>1){return list.reduce((a,x)=>{const k=x[key];a[k]=(a[k]||0)+Number(val(x));return a},{})}
+
+    function renderLogin() {
+      root.innerHTML = `<div class="login"><div class="login-box">
+        <div class="brand"><div class="brand-mark">MG</div><div><div>BASARI</div><small>AKADEMI</small></div></div>
+        <h1>Ogrenci Analiz ve Takip</h1><p class="muted">Railway ve PostgreSQL ile ortak veritabanli takip sistemi.</p>
+        <div class="tabs"><button id="teacherTab" class="active" onclick="loginMode('teacher')">Ogretmen</button><button id="studentTab" onclick="loginMode('student')">Ogrenci</button></div>
+        <form id="loginForm" onsubmit="login(event)"></form>
+        <p class="muted">Demo Ogretmen sifresi: <b>demo123</b>  Ogrenci kodlari: arda-2026, zeynep-2026, can-2026, elif-2026</p>
+      </div></div>`;
+      loginMode("teacher");
+    }
+    function loginMode(mode) {
+      document.getElementById("teacherTab").classList.toggle("active", mode==="teacher");
+      document.getElementById("studentTab").classList.toggle("active", mode==="student");
+      document.getElementById("loginForm").dataset.mode = mode;
+      document.getElementById("loginForm").innerHTML = mode==="teacher"
+        ? `<div class="field"><label>Ogretmen sifresi</label><input name="password" type="password" value="demo123" required></div><button class="btn primary" style="width:100%">Ogretmen panelini ac</button>`
+        : `<div class="field"><label>Ogrenci kodu</label><input name="accessCode" value="arda-2026" required></div><button class="btn primary" style="width:100%">Ogrenci panelini ac</button>`;
+    }
+    async function login(ev) {
+      ev.preventDefault();
+      const fd = Object.fromEntries(new FormData(ev.target));
+      const mode = ev.target.dataset.mode;
+      const data = await api.req(`/api/login/${mode}`, { method:"POST", body: JSON.stringify(fd) });
+      api.token = data.token; user = data.user;
+      localStorage.setItem("token", api.token); localStorage.setItem("user", JSON.stringify(user));
+      page = user.role === "teacher" ? "dashboard" : "student";
+      await load();
+    }
+    async function load() {
+      state = await api.req("/api/state");
+      if (!activeStudentId || !state.students.some(s=>s.id===activeStudentId)) activeStudentId = user?.studentId || state.students[0]?.id || "";
+      localStorage.setItem("activeStudentId", activeStudentId);
+      renderApp();
+    }
+    function logout(){localStorage.clear();api.token="";user=null;renderLogin()}
+
+    function renderApp() {
+      root.innerHTML = `<div class="app">
+        <aside class="sidebar" id="sidebar">
+          <div class="brand"><div class="brand-mark">MG</div><div><div>BASARI</div><small>AKADEMI</small></div></div>
+          <div class="side-title">Ana Menu</div><nav class="nav">
+            <button data-page="dashboard" class="teacher"> Ana Ekran</button><button data-page="students" class="teacher"> Ogrenciler</button><button data-page="entry"> Gunluk Kayit</button>
+          </nav><div class="side-title">Analiz</div><nav class="nav">
+            <button data-page="exams"> Denemeler</button><button data-page="subjects" class="teacher"> Ders Takibi</button><button data-page="mistakes"> Hata Defteri</button><button data-page="charts"> Gelisim Analizi</button>
+          </nav><div class="side-title">Yonetim</div><nav class="nav">
+            <button data-page="reports"> Raporlar</button><button data-page="settings" class="teacher"> Ayarlar & Yedek</button><button data-page="student"> Ogrenci Paneli</button>
+          </nav>
+        </aside>
+        <main class="main"><header class="topbar"><div class="actions"><button class="btn mobile-menu" onclick="sidebar.classList.toggle('open')"></button><div><strong id="title"></strong><div class="muted" id="subtitle"></div></div></div><div class="top-actions"><label class="search teacher"><span></span><input oninput="filterCards(this.value)" placeholder="Ogrenci ara..."></label><button class="btn primary teacher" onclick="openStudentForm()">+ Ogrenci Ekle</button><button class="btn" onclick="logout()">Cikis</button></div></header><section class="page active" id="content"></section></main>
+      </div>`;
+      contentEl = document.getElementById("content");
+      document.querySelectorAll(".teacher").forEach(el=>el.classList.toggle("hidden", user.role!=="teacher"));
+      document.querySelector(".sidebar").onclick = e => { const b=e.target.closest("[data-page]"); if(!b)return; page=b.dataset.page; renderPage(); sidebar.classList.remove("open"); };
+      renderPage();
+    }
+    function setTitle(t,s){document.getElementById("title").textContent=t;document.getElementById("subtitle").textContent=s||"";document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page))}
+    function renderPage(){charts.forEach(c=>c.destroy?.());charts=[];({dashboard,students,entry,exams:examsPage,subjects,mistakes:mistakesPage,charts:chartsPage,reports,settings,student:studentPage}[page]||studentPage)(); if(user.role==="student"&&["dashboard","students","subjects","settings"].includes(page)){page="student";studentPage()}}
+
+    function dashboard(){
+      setTitle("Ana Ekran","29 Haziran 2026 Pazartesi");
+      const week = state.students.reduce((s,st)=>s+weekTotal(st.id),0);
+      const todayQ = state.entries.filter(e=>e.date===today()).reduce((s,e)=>s+Number(e.total),0);
+      contentEl.innerHTML = `<div class="grid four">
+        <div class="stat" style="--blob:#eef2ff"><span></span><strong>${state.students.length}</strong><small>Aktif Ogrenci</small></div>
+        <div class="stat" style="--blob:#f5ecff"><span></span><strong>${state.entries.filter(e=>e.date===today()).length}</strong><small>Bugun Kayit Girildi</small></div>
+        <div class="stat" style="--blob:#eaf8f3"><span></span><strong>${fmt(todayQ)}</strong><small>Bugun Toplam Soru</small></div>
+        <div class="stat" style="--blob:#fff5e9"><span></span><strong>${fmt(week)}</strong><small>Bu Hafta Toplam Soru</small></div>
+      </div><div class="section" style="margin-top:28px"><div class="section-toolbar"><div><b> Ogrenciler</b><div class="muted">${state.students.length} Ogrenci</div></div><select><option>Tumu</option></select></div><div class="cards" id="cards">${state.students.map(card).join("")}</div></div>`;
+    }
+    function card(s,i){const recent=entries(s.id).sort((a,b)=>b.date.localeCompare(a.date))[0];return `<article class="student-card" data-name="${s.name.toLowerCase()}" style="--card:${colors[i%colors.length]}" onclick="activeStudentId='${s.id}';localStorage.setItem('activeStudentId',activeStudentId);page='student';renderPage()"><div class="card-top"><div class="avatar">${initials(s.name)}</div><span class="pill">Aktif</span></div><div><h3>${s.name}</h3><div class="muted">${s.className}  ${s.targetExam}</div></div><div class="metric-grid"><div class="mini"><strong>${fmt(weekTotal(s.id))}</strong><small>Bu hafta</small></div><div class="mini orange"><strong>${lastLabel(recent)}</strong><small>Son kayit</small></div><div class="mini dark"><strong>${fmt(totalQuestions(s.id))}</strong><small>Toplam soru</small></div><div class="mini orange"><strong> ${Math.max(1,Math.ceil(entries(s.id).length/8))}</strong><small>Gun serisi</small></div></div></article>`}
+    function filterCards(v){document.querySelectorAll(".student-card").forEach(c=>c.style.display=c.dataset.name.includes(v.toLowerCase())?"":"none")}
+
+    function students(){setTitle("Ogrenciler","Ogrenci yonetimi");contentEl.innerHTML=`<div class="section"><div class="cards">${state.students.map(card).join("")}</div></div><div class="panel table-wrap" style="margin-top:18px"><table><thead><tr><th>Ogrenci</th><th>Hedef</th><th>Kod</th><th>Toplam Soru</th><th>Basari</th><th>Islem</th></tr></thead><tbody>${state.students.map(s=>`<tr><td><b>${s.name}</b><div class="muted">${s.className}</div></td><td>${s.targetExam}<div class="muted">${s.targetNet} net  ${s.targetScore} puan</div></td><td><code>${s.accessCode}</code></td><td>${fmt(totalQuestions(s.id))}</td><td><span class="badge good">%${success(s.id)}</span></td><td class="actions"><button class="btn" onclick="openStudentForm('${s.id}')">Duzenle</button><button class="btn danger" onclick="deleteStudent('${s.id}')">Sil</button></td></tr>`).join("")}</tbody></table></div>`}
+
+    function studentPage(){const s=student();setTitle(user.role==="student"?"Ogrenci Paneli":s.name,`${s.className}  ${s.targetExam}`);const last=exams().at(-1);contentEl.innerHTML=`<div class="grid four"><div class="stat"><strong>${fmt(totalQuestions(s.id))}</strong><small>Toplam soru</small></div><div class="stat"><strong>%${success(s.id)}</strong><small>Basari</small></div><div class="stat"><strong>${last?examNet(last):0}</strong><small>Son deneme neti</small></div><div class="stat"><strong>${fmt(weekTotal(s.id))}</strong><small>Bu hafta</small></div></div><div class="grid two" style="margin-top:18px"><div class="panel"><h3>Deneme net gelisimi</h3><canvas class="chart" id="examChart"></canvas></div><div class="panel"><h3>Yanlis konu listesi</h3>${Object.entries(group(mistakes(),"topic",m=>m.count)).sort((a,b)=>b[1]-a[1]).map(x=>`<p><b>${x[0]}</b> <span class="badge bad">${x[1]}</span></p>`).join("")||"<p class='muted'>Kayit yok.</p>"}</div></div>`;line("examChart",exams().map(e=>e.name),exams().map(examNet))}
+
+    function entry(){const s=student();setTitle("Gunluk Kayit",`${s.name} icin soru girisi`);contentEl.innerHTML=`<div class="panel"><button class="btn primary" onclick="openEntryForm()">Kayit Ekle</button></div><div class="panel table-wrap" style="margin-top:18px"><table><thead><tr><th>Tarih</th><th>Ders</th><th>Konu</th><th>Toplam</th><th>Dogru</th><th>Yanlis</th><th>Bos</th><th>Net</th></tr></thead><tbody>${entries().map(e=>`<tr><td>${e.date}</td><td>${e.subject}</td><td>${e.topic}</td><td>${e.total}</td><td>${e.correct}</td><td>${e.wrong}</td><td>${e.blank}</td><td>${net(e.correct,e.wrong)}</td></tr>`).join("")}</tbody></table></div>`}
+
+    function examsPage(){setTitle("Denemeler","Deneme puanlari ortak veritabanina kaydedilir");contentEl.innerHTML=`<div class="actions"><button class="btn primary" onclick="openExamForm()">Deneme Ekle</button></div><div class="grid two" style="margin-top:18px"><div class="panel"><h3>Deneme net gelisimi</h3><canvas class="chart" id="examLine"></canvas></div><div class="panel table-wrap"><table><thead><tr><th>Deneme</th><th>Tarih</th><th>Tur</th><th>Net</th><th>Puan</th></tr></thead><tbody>${exams().map(e=>`<tr><td>${e.name}</td><td>${e.date}</td><td>${e.type}</td><td>${examNet(e)}</td><td>${e.score}</td></tr>`).join("")}</tbody></table></div></div>`;line("examLine",exams().map(e=>e.name),exams().map(examNet))}
+    function mistakesPage(){setTitle("Hata Defteri","Yanlis analizi");contentEl.innerHTML=`<button class="btn primary" onclick="openMistakeForm()">Yanlis Ekle</button><div class="grid two" style="margin-top:18px"><div class="panel"><canvas class="chart" id="mistakeChart"></canvas></div><div class="panel table-wrap"><table><thead><tr><th>Ders</th><th>Konu</th><th>Hata</th><th>Adet</th></tr></thead><tbody>${mistakes().map(m=>`<tr><td>${m.subject}</td><td>${m.topic}</td><td>${m.type}</td><td>${m.count}</td></tr>`).join("")}</tbody></table></div></div>`;bar("mistakeChart",Object.entries(group(mistakes(),"type",m=>m.count)))}
+    function subjects(){setTitle("Ders Takibi","Ders ve konu yonetimi");contentEl.innerHTML=`<button class="btn primary" onclick="openSubjectForm()">Ders Ekle</button><div class="grid two" style="margin-top:18px">${state.subjects.map(s=>`<div class="panel"><h3>${s.name}</h3><p class="muted">${s.topics.join(", ")}</p><button class="btn" onclick="openTopicForm('${s.id}')">Konu Ekle</button></div>`).join("")}</div>`}
+    function chartsPage(){setTitle("Gelisim Analizi",student().name);contentEl.innerHTML=`<div class="grid two"><div class="panel"><h3>Haftalik soru</h3><canvas class="chart" id="qchart"></canvas></div><div class="panel"><h3>Ders basari</h3><canvas class="chart" id="schart"></canvas></div></div>`;bar("qchart",Object.entries(group(entries(),"subject",e=>e.total)));bar("schart",Object.entries(group(entries(),"subject",e=>e.correct)))}
+    function reports(){setTitle("Raporlar","PDF yerine paylasilabilir ozet rapor");const s=student();contentEl.innerHTML=`<div class="panel"><h3>${s.name} Gelisim Raporu</h3><p>Toplam soru: <b>${fmt(totalQuestions(s.id))}</b></p><p>Basari: <b>%${success(s.id)}</b></p><p>Son deneme neti: <b>${exams().at(-1)?examNet(exams().at(-1)):0}</b></p><button class="btn primary" onclick="window.print()">Yazdir / PDF Kaydet</button></div>`}
+    function settings(){setTitle("Ayarlar & Yedek","Railway veritabani ayarlari");contentEl.innerHTML=`<div class="panel"><h3>Ogrenci giris kodlari</h3>${state.students.map(s=>`<p><b>${s.name}</b>: <code>${s.accessCode}</code></p>`).join("")}<p class="muted">Railway'de TEACHER_PASSWORD ve SESSION_SECRET degiskenlerini ayarlayin.</p></div>`}
+
+    function openModal(t,html){modalTitle.textContent=t;modalBody.innerHTML=html;modal.classList.add("open")}function closeModal(){modal.classList.remove("open")}
+    function studentSelect(){return user.role==="teacher"?`<div class="field"><label>Ogrenci</label><select name="studentId">${state.students.map(s=>`<option value="${s.id}" ${s.id===activeStudentId?"selected":""}>${s.name}</option>`).join("")}</select></div>`:`<input type="hidden" name="studentId" value="${activeStudentId}">`}
+    function subjectOpts(){return state.subjects.map(s=>`<option>${s.name}</option>`).join("")}
+    function openStudentForm(id){const s=state.students.find(x=>x.id===id)||{};openModal(id?"Ogrenci Duzenle":"Ogrenci Ekle",`<form onsubmit="saveStudent(event,'${id||""}')" class="form-grid"><div class="field wide"><label>Ad soyad</label><input name="name" value="${s.name||""}" required></div><div class="field"><label>Sinif</label><input name="className" value="${s.className||""}" required></div><div class="field"><label>Hedef sinav</label><input name="targetExam" value="${s.targetExam||"TYT/AYT"}" required></div><div class="field"><label>Hedef net</label><input name="targetNet" type="number" value="${s.targetNet||70}" required></div><div class="field"><label>Hedef puan</label><input name="targetScore" type="number" value="${s.targetScore||400}" required></div><div class="field"><label>Haftalik hedef</label><input name="weeklyGoal" type="number" value="${s.weeklyGoal||700}" required></div><div class="field"><label>Ogrenci kodu</label><input name="accessCode" value="${s.accessCode||""}" placeholder="bossa otomatik"></div><button class="btn primary">Kaydet</button></form>`)}
+    async function saveStudent(ev,id){ev.preventDefault();const body=Object.fromEntries(new FormData(ev.target));["targetNet","targetScore","weeklyGoal"].forEach(k=>body[k]=Number(body[k]));await api.req(id?`/api/students/${id}`:"/api/students",{method:id?"PUT":"POST",body:JSON.stringify(body)});closeModal();await load()}
+    async function deleteStudent(id){if(!confirm("Silinsin mi?"))return;await api.req(`/api/students/${id}`,{method:"DELETE"});await load()}
+    function openEntryForm(){openModal("Gunluk Kayit",`<form onsubmit="saveEntry(event)" class="form-grid">${studentSelect()}<div class="field"><label>Tarih</label><input name="date" type="date" value="${today()}" required></div><div class="field"><label>Ders</label><select name="subject">${subjectOpts()}</select></div><div class="field"><label>Konu</label><input name="topic" required></div><div class="field"><label>Toplam</label><input name="total" type="number" required></div><div class="field"><label>Dogru</label><input name="correct" type="number" required></div><div class="field"><label>Yanlis</label><input name="wrong" type="number" required></div><div class="field"><label>Bos</label><input name="blank" type="number" required></div><button class="btn primary">Kaydet</button></form>`)}
+    async function saveEntry(ev){ev.preventDefault();const b=Object.fromEntries(new FormData(ev.target));["total","correct","wrong","blank"].forEach(k=>b[k]=Number(b[k]));await api.req("/api/entries",{method:"POST",body:JSON.stringify(b)});closeModal();await load()}
+    function openExamForm(){openModal("Deneme Ekle",`<form onsubmit="saveExam(event)" class="grid">${studentSelect()}<div class="form-grid"><div class="field"><label>Ad</label><input name="name" required></div><div class="field"><label>Tarih</label><input name="date" type="date" value="${today()}" required></div><div class="field"><label>Tur</label><input name="type" value="${student().targetExam}" required></div><div class="field"><label>Puan</label><input name="score" type="number" required></div></div><div class="grid two">${["Turkce","Matematik","Fen Bilimleri","Ingilizce"].map(s=>`<div class="panel"><h3>${s}</h3><input type="hidden" name="sub" value="${s}"><div class="form-grid"><div class="field"><label>Toplam</label><input name="${s}_total" type="number" value="20"></div><div class="field"><label>Dogru</label><input name="${s}_correct" type="number" value="12"></div><div class="field"><label>Yanlis</label><input name="${s}_wrong" type="number" value="5"></div><div class="field"><label>Bos</label><input name="${s}_blank" type="number" value="3"></div></div></div>`).join("")}</div><button class="btn primary">Kaydet</button></form>`)}
+    async function saveExam(ev){ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));const details=["Turkce","Matematik","Fen Bilimleri","Ingilizce"].map(s=>({subject:s,total:+f[`${s}_total`],correct:+f[`${s}_correct`],wrong:+f[`${s}_wrong`],blank:+f[`${s}_blank`]}));await api.req("/api/exams",{method:"POST",body:JSON.stringify({studentId:f.studentId,name:f.name,date:f.date,type:f.type,score:+f.score,details})});closeModal();await load()}
+    function openMistakeForm(){openModal("Yanlis Ekle",`<form onsubmit="saveMistake(event)" class="form-grid">${studentSelect()}<div class="field"><label>Tarih</label><input name="date" type="date" value="${today()}" required></div><div class="field"><label>Ders</label><select name="subject">${subjectOpts()}</select></div><div class="field"><label>Konu</label><input name="topic" required></div><div class="field"><label>Hata</label><select name="type">${mistakeTypes.map(t=>`<option>${t}</option>`)}</select></div><div class="field"><label>Adet</label><input name="count" type="number" value="1"></div><div class="field wide"><label>Not</label><input name="note"></div><button class="btn primary">Kaydet</button></form>`)}
+    async function saveMistake(ev){ev.preventDefault();const b=Object.fromEntries(new FormData(ev.target));b.count=+b.count;await api.req("/api/mistakes",{method:"POST",body:JSON.stringify(b)});closeModal();await load()}
+    function openSubjectForm(){openModal("Ders Ekle",`<form onsubmit="saveSubject(event)" class="form-grid"><div class="field"><label>Ders</label><input name="name" required></div><div class="field wide"><label>Konular</label><input name="topics" placeholder="Virgulle ayir"></div><button class="btn primary">Kaydet</button></form>`)}
+    async function saveSubject(ev){ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));await api.req("/api/subjects",{method:"POST",body:JSON.stringify({name:f.name,topics:f.topics.split(",").map(x=>x.trim()).filter(Boolean)})});closeModal();await load()}
+    function openTopicForm(id){openModal("Konu Ekle",`<form onsubmit="saveTopic(event,'${id}')"><div class="field"><label>Konu</label><input name="topic" required></div><button class="btn primary">Ekle</button></form>`)}
+    async function saveTopic(ev,id){ev.preventDefault();await api.req(`/api/subjects/${id}/topics`,{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(ev.target)))});closeModal();await load()}
+
+    function line(id,labels,data){if(!window.Chart)return;charts.push(new Chart(document.getElementById(id),{type:"line",data:{labels,datasets:[{label:"Net",data,borderColor:"#2667ea",backgroundColor:"rgba(38,103,234,.12)",fill:true,tension:.35}]},options:{responsive:true,maintainAspectRatio:false}}))}
+    function bar(id,pairs){if(!window.Chart)return;charts.push(new Chart(document.getElementById(id),{type:"bar",data:{labels:pairs.map(x=>x[0]),datasets:[{label:"Toplam",data:pairs.map(x=>x[1]),backgroundColor:"#38bdf8"}]},options:{responsive:true,maintainAspectRatio:false}}))}
+    (async()=>{ if(api.token&&user){try{await load()}catch(e){logout()}} else renderLogin() })();
+  </script>
+</body>
+</html>
