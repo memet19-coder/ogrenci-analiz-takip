@@ -1,38 +1,39 @@
-# Öğrenci Analiz ve Takip Uygulaması
+# Başarı Akademi Öğrenci Takip
 
-Railway üzerinde yayınlanmaya hazır Node.js + PostgreSQL sürümüdür.
+Railway üzerinde yayınlanmaya hazır Node.js + PostgreSQL öğrenci takip uygulamasıdır.
 
-## Railway Kurulum
+## Yeni Sistem Mantığı
 
-1. Railway'de yeni proje oluşturun.
-2. Bu klasörü GitHub'a gönderip Railway'e bağlayın ya da Railway CLI ile deploy edin.
-3. Railway projesine PostgreSQL servisi ekleyin.
-4. Uygulama servisinde şu değişkenleri tanımlayın:
+- Ayrı öğretmen ve öğrenci girişi yoktur.
+- Öğrenciler sisteme giriş yapmaz.
+- Günlük soru, deneme, yanlış analizi ve not girişlerini öğretmen yapar.
+- Uygulama tek yönetim paneli olarak açılır.
+- Logo `public/mg-logo.png` dosyasından yüklenir.
+
+## Railway Değişkenleri
+
+Uygulamanın çalışması için sadece şu değişkenler yeterlidir:
 
 ```env
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-TEACHER_PASSWORD=guclu-bir-sifre
-SESSION_SECRET=uzun-rastgele-bir-anahtar
+DATABASE_URL=postgresql://...
 NODE_ENV=production
 ```
 
-5. Railway otomatik olarak `npm install` ve `npm start` çalıştırır.
+Neon kullanıyorsanız `DATABASE_URL` alanına Neon connection string yapıştırın.
 
-## Giriş
+## Railway Domain Portu
 
-- Öğretmen: belirlediğiniz `TEACHER_PASSWORD` ile giriş yapar.
-- Öğrenci: öğretmen panelindeki öğrenci koduyla giriş yapar.
+Public domain oluştururken port sorarsa:
 
-Öğrenci deneme, günlük soru veya yanlış analizi girdiğinde kayıt PostgreSQL'e yazılır. Öğretmen paneli aynı veritabanından okuduğu için bu kayıtları görür.
+```text
+3000
+```
 
-## Demo Bilgileri
+## Çalıştırma
 
-İlk açılışta örnek öğrenciler ve şu öğrenci kodları oluşturulur:
+```bash
+npm install
+npm start
+```
 
-- `arda-2026`
-- `zeynep-2026`
-- `can-2026`
-- `elif-2026`
-- `mert-2026`
-
-Varsayılan öğretmen şifresi sadece yerel/demo kullanım içindir: `demo123`. Railway'de mutlaka `TEACHER_PASSWORD` değiştirin.
+İlk açılışta örnek öğrenciler, dersler, deneme sonuçları ve yanlış analizleri otomatik oluşturulur.
