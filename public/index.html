@@ -265,13 +265,6 @@
       const week = active.reduce((s, st) => s + weekTotal(st.id), 0);
       const todayQ = state.entries.filter(e => e.date === today()).reduce((s, e) => s + Number(e.total), 0);
       contentEl.innerHTML = `
-        <div class="panel" style="margin-bottom:18px">
-          <div class="actions">
-            <button class="btn" onclick="openStudentForm('${s.id}')">Öğrenci Bilgilerini Düzenle</button>
-            <button class="btn" onclick="archiveStudent('${s.id}', ${!s.archived})">${s.archived ? "Arşivden Çıkar" : "Arşive Al"}</button>
-            <button class="btn danger" onclick="deleteStudent('${s.id}')">Kalıcı Sil</button>
-          </div>
-        </div>
         <div class="grid four">
           <div class="stat" style="--blob:#eef2ff"><span>👥</span><strong>${active.length}</strong><small>Aktif Öğrenci</small></div>
           <div class="stat" style="--blob:#f5ecff"><span>✏️</span><strong>${state.entries.filter(e => e.date === today()).length}</strong><small>Bugün Girilen Kayıt</small></div>
@@ -329,6 +322,13 @@
       setTitle(s.name, `${s.className} · ${s.targetExam}`);
       const last = exams().at(-1);
       contentEl.innerHTML = `
+        <div class="panel" style="margin-bottom:18px">
+          <div class="actions">
+            <button class="btn" onclick="openStudentForm('${s.id}')">Öğrenci Bilgilerini Düzenle</button>
+            <button class="btn" onclick="archiveStudent('${s.id}', ${!s.archived})">${s.archived ? "Arşivden Çıkar" : "Arşive Al"}</button>
+            <button class="btn danger" onclick="deleteStudent('${s.id}')">Kalıcı Sil</button>
+          </div>
+        </div>
         <div class="grid four">
           <div class="stat"><strong>${fmt(totalQuestions(s.id))}</strong><small>Toplam soru</small></div>
           <div class="stat"><strong>%${success(s.id)}</strong><small>Başarı</small></div>
