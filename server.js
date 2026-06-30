@@ -113,6 +113,10 @@ async function initDb() {
     );
   `);
   await pool.query("alter table students add column if not exists archived boolean not null default false");
+  await pool.query("alter table students add column if not exists access_code text");
+  await pool.query("update students set access_code = encode(gen_random_bytes(4), 'hex') where access_code is null");
+  await pool.query("alter table students alter column access_code set default encode(gen_random_bytes(4), 'hex')");
+  await pool.query("alter table students alter column access_code set not null");
   await pool.query("alter table entries add column if not exists study_minutes integer not null default 0");
   await normalizeMiddleSchoolSubjects();
 
@@ -335,8 +339,8 @@ app.get("/api/state", async (req, res) => {
 app.post("/api/students", async (req, res) => {
   const s = req.body;
   const [student] = await query(
-    `insert into students(name,class_name,target_exam,target_net,target_score,weekly_goal)
-     values($1,$2,$3,$4,$5,$6) returning id`,
+    `insert into students(name,class_name,target_exam,target_net,target_score,weekly_goal,access_code)
+     values($1,$2,$3,$4,$5,$6,encode(gen_random_bytes(4), 'hex')) returning id`,
     [s.name, s.className, s.targetExam, s.targetNet, s.targetScore, s.weeklyGoal]
   );
   res.status(201).json(student);

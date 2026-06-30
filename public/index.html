@@ -845,16 +845,41 @@
           <div class="field"><label>Hedef net</label><input name="targetNet" type="number" value="${s.targetNet || 75}" required></div>
           <div class="field"><label>Hedef puan</label><input name="targetScore" type="number" value="${s.targetScore || 430}" required></div>
           <div class="field"><label>Haftalık hedef</label><input name="weeklyGoal" type="number" value="${s.weeklyGoal || 650}" required></div>
-          <button class="btn primary">Kaydet</button>
+          <div class="field wide" id="studentFormError" style="display:none;color:#c5162b;font-weight:850"></div>
+          <button class="btn primary" id="studentSaveBtn">Kaydet</button>
         </form>`);
     }
     async function saveStudent(ev, id) {
       ev.preventDefault();
+      const btn = document.getElementById("studentSaveBtn");
+      const error = document.getElementById("studentFormError");
+      if (error) {
+        error.style.display = "none";
+        error.textContent = "";
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Kaydediliyor...";
+      }
       const body = Object.fromEntries(new FormData(ev.target));
       ["targetNet", "targetScore", "weeklyGoal"].forEach(k => body[k] = Number(body[k]));
-      await api.req(id ? `/api/students/${id}` : "/api/students", { method: id ? "PUT" : "POST", body: JSON.stringify(body) });
-      closeModal();
-      await load();
+      try {
+        await api.req(id ? `/api/students/${id}` : "/api/students", { method: id ? "PUT" : "POST", body: JSON.stringify(body) });
+        closeModal();
+        await load();
+      } catch (err) {
+        if (error) {
+          error.textContent = err.message || "Öğrenci kaydedilemedi.";
+          error.style.display = "block";
+        } else {
+          alert(err.message || "Öğrenci kaydedilemedi.");
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Kaydet";
+        }
+      }
     }
     async function deleteStudent(id) {
       if (!confirm("Öğrenci silinsin mi?")) return;
