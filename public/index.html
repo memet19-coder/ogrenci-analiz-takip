@@ -50,6 +50,7 @@
     .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid.four { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
+    .grid.five { grid-template-columns: repeat(5, minmax(170px, 1fr)); }
     .panel, .stat, .section { background: #fff; border: 1px solid var(--line); border-radius: 12px; }
     .panel, .section { padding: 20px; }
     .stat { padding: 22px; min-height: 150px; display: grid; align-content: space-between; position: relative; overflow: hidden; }
@@ -97,13 +98,13 @@
       .sidebar { position: fixed; z-index: 20; transform: translateX(-100%); transition: .2s; width: min(310px, 88vw); }
       .sidebar.open { transform: translateX(0); }
       .mobile-menu { display: inline-flex; }
-      .grid.four, .grid.three, .grid.two { grid-template-columns: 1fr 1fr; }
+      .grid.five, .grid.four, .grid.three, .grid.two { grid-template-columns: 1fr 1fr; }
       .form-grid { grid-template-columns: 1fr 1fr; }
       .page { padding: 18px; }
       .search { display: none; }
     }
     @media (max-width: 680px) {
-      .grid.four, .grid.three, .grid.two, .form-grid { grid-template-columns: 1fr; }
+      .grid.five, .grid.four, .grid.three, .grid.two, .form-grid { grid-template-columns: 1fr; }
       .wide { grid-column: auto; }
       .topbar { padding: 10px 14px; }
       .cards { grid-template-columns: 1fr; }
@@ -161,6 +162,12 @@
     function archivedStudents() { return state.students.filter(s => s.archived); }
     function student() { return state.students.find(s => s.id === activeStudentId) || state.students[0]; }
     function totalQuestions(id) { return entries(id).reduce((s, e) => s + Number(e.total), 0); }
+    function totalStudyMinutes(id) { return entries(id).reduce((s, e) => s + Number(e.studyMinutes || 0), 0); }
+    function formatDuration(minutes) {
+      const h = Math.floor(Number(minutes || 0) / 60);
+      const m = Number(minutes || 0) % 60;
+      return h ? `${h} sa ${m} dk` : `${m} dk`;
+    }
     function success(id) {
       const es = entries(id);
       const correct = es.reduce((s, e) => s + Number(e.correct), 0);
@@ -171,6 +178,11 @@
       const start = new Date();
       start.setDate(start.getDate() - start.getDay() + 1);
       return entries(id).filter(e => new Date(e.date + "T12:00") >= start).reduce((s, e) => s + Number(e.total), 0);
+    }
+    function weekStudyMinutes(id) {
+      const start = new Date();
+      start.setDate(start.getDate() - start.getDay() + 1);
+      return entries(id).filter(e => new Date(e.date + "T12:00") >= start).reduce((s, e) => s + Number(e.studyMinutes || 0), 0);
     }
     function lastLabel(e) {
       if (!e) return "Yok";
@@ -205,18 +217,11 @@
             <nav class="nav">
               <button data-page="dashboard">📊 Ana Ekran</button>
               <button data-page="students">👥 Öğrenciler</button>
-              <button data-page="entry">✏️ Günlük Kayıt</button>
-            </nav>
-            <div class="side-title">Analiz</div>
-            <nav class="nav">
-              <button data-page="exams">📝 Denemeler</button>
-              <button data-page="subjects">📚 Ders Takibi</button>
-              <button data-page="mistakes">🎯 Hata Defteri</button>
-              <button data-page="charts">📈 Gelişim Analizi</button>
+              <button data-page="student">👤 Öğrenci Takibi</button>
             </nav>
             <div class="side-title">Yönetim</div>
             <nav class="nav">
-              <button data-page="student">👤 Öğrenci Detayı</button>
+              <button data-page="subjects">📚 Ders & Konu</button>
               <button data-page="reports">📄 Raporlar</button>
               <button data-page="settings">⚙️ Ayarlar</button>
             </nav>
@@ -229,6 +234,7 @@
               </div>
               <div class="actions">
                 <label class="search"><span>🔎</span><input oninput="filterCards(this.value)" placeholder="Öğrenci ara..."></label>
+                <select id="topStudentSelect" class="btn" onchange="selectStudent(this.value)">${activeStudents().map(s => `<option value="${s.id}" ${s.id === activeStudentId ? "selected" : ""}>${s.name}</option>`).join("")}</select>
                 <button class="btn primary" onclick="openStudentForm()">+ Öğrenci Ekle</button>
               </div>
             </header>
@@ -249,6 +255,8 @@
     function setTitle(title, subtitle = "") {
       document.getElementById("title").textContent = title;
       document.getElementById("subtitle").textContent = subtitle;
+      const topSelect = document.getElementById("topStudentSelect");
+      if (topSelect) topSelect.value = activeStudentId;
       document.querySelectorAll("[data-page]").forEach(btn => btn.classList.toggle("active", btn.dataset.page === page));
     }
 
@@ -272,7 +280,7 @@
           <div class="stat" style="--blob:#fff5e9"><span>📈</span><strong>${fmt(week)}</strong><small>Bu Hafta Toplam Soru</small></div>
         </div>
         <div class="section" style="margin-top:28px">
-          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif · ${archivedStudents().length} arşiv</div></div><button class="btn dark" onclick="page='entry';renderPage()">Hızlı Kayıt</button></div>
+          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif · ${archivedStudents().length} arşiv</div></div><button class="btn dark" onclick="page='student';renderPage()">Öğrenci Takibi</button></div>
           <div class="cards" id="cards">${active.map(card).join("")}</div>
         </div>`;
     }
@@ -295,6 +303,12 @@
       document.querySelectorAll(".student-card").forEach(card => {
         card.style.display = card.dataset.name.includes(value.toLowerCase()) ? "" : "none";
       });
+    }
+    function selectStudent(id) {
+      activeStudentId = id;
+      localStorage.setItem("activeStudentId", activeStudentId);
+      page = "student";
+      renderPage();
     }
 
     function students() {
@@ -321,27 +335,38 @@
       if (!s) return dashboard();
       setTitle(s.name, `${s.className} · ${s.targetExam}`);
       const last = exams().at(-1);
+      const studentEntries = entries();
+      const studentExams = exams();
+      const studentMistakes = mistakes();
       contentEl.innerHTML = `
         <div class="panel" style="margin-bottom:18px">
           <div class="actions">
+            <label class="field" style="min-width:260px;margin:0"><label>Öğrenci Seç</label><select onchange="selectStudent(this.value)">${activeStudents().map(st => `<option value="${st.id}" ${st.id === s.id ? "selected" : ""}>${st.name}</option>`).join("")}</select></label>
             <button class="btn" onclick="openStudentForm('${s.id}')">Öğrenci Bilgilerini Düzenle</button>
             <button class="btn" onclick="archiveStudent('${s.id}', ${!s.archived})">${s.archived ? "Arşivden Çıkar" : "Arşive Al"}</button>
             <button class="btn danger" onclick="deleteStudent('${s.id}')">Kalıcı Sil</button>
           </div>
         </div>
-        <div class="grid four">
+        <div class="grid five">
           <div class="stat"><strong>${fmt(totalQuestions(s.id))}</strong><small>Toplam soru</small></div>
+          <div class="stat"><strong>${formatDuration(totalStudyMinutes(s.id))}</strong><small>Toplam çalışma</small></div>
           <div class="stat"><strong>%${success(s.id)}</strong><small>Başarı</small></div>
           <div class="stat"><strong>${last ? examNet(last) : 0}</strong><small>Son deneme neti</small></div>
-          <div class="stat"><strong>${fmt(weekTotal(s.id))}</strong><small>Bu hafta</small></div>
+          <div class="stat"><strong>${formatDuration(weekStudyMinutes(s.id))}</strong><small>Bu hafta çalışma</small></div>
         </div>
+        <div class="panel" style="margin-top:18px"><div class="actions"><button class="btn primary" onclick="openEntryForm()">Çalışma / Soru Ekle</button><button class="btn primary" onclick="openExamForm()">Deneme Ekle</button><button class="btn primary" onclick="openMistakeForm()">Hata Ekle</button><button class="btn" onclick="openNoteForm()">Not Ekle</button></div></div>
         <div class="grid two" style="margin-top:18px">
           <div class="panel"><h3>Deneme net gelişimi</h3><div class="chart-box"><canvas class="chart" id="examChart"></canvas></div></div>
-          <div class="panel"><h3>Öğretmen notları</h3><div class="actions"><button class="btn primary" onclick="openNoteForm()">Not Ekle</button></div>${notes().map(n => `<p><b>${n.date}</b><br>${n.text}</p>`).join("") || "<p class='muted'>Henüz not yok.</p>"}</div>
-          <div class="panel"><h3>Yanlış konu listesi</h3>${Object.entries(group(mistakes(), "topic", m => m.count)).sort((a, b) => b[1] - a[1]).map(x => `<p><b>${x[0]}</b> <span class="badge bad">${x[1]}</span></p>`).join("") || "<p class='muted'>Kayıt yok.</p>"}</div>
-          <div class="panel"><h3>Hızlı işlemler</h3><div class="actions"><button class="btn" onclick="page='entry';renderPage()">Soru Gir</button><button class="btn" onclick="page='exams';renderPage()">Deneme Gir</button><button class="btn" onclick="page='mistakes';renderPage()">Yanlış Gir</button></div></div>
+          <div class="panel"><h3>Derslere göre çözülen soru</h3><div class="chart-box"><canvas class="chart" id="subjectChart"></canvas></div></div>
+        </div>
+        <div class="grid two" style="margin-top:18px">
+          <div class="panel table-wrap"><h3>Çalışma ve Soru Kayıtları</h3><table><thead><tr><th>Tarih</th><th>Ders</th><th>Konu</th><th>Süre</th><th>Toplam</th><th>D/Y/B</th><th>Net</th><th></th></tr></thead><tbody>${studentEntries.map(e => `<tr><td>${e.date}</td><td>${e.subject}</td><td>${e.topic}</td><td>${formatDuration(e.studyMinutes || 0)}</td><td>${e.total}</td><td>${e.correct}/${e.wrong}/${e.blank}</td><td>${net(e.correct, e.wrong)}</td><td class="actions"><button class="btn" onclick="openEntryForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/entries/${e.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="8" class="muted">Kayıt yok.</td></tr>`}</tbody></table></div>
+          <div class="panel table-wrap"><h3>Denemeler</h3><table><thead><tr><th>Tarih</th><th>Deneme</th><th>Tür</th><th>Net</th><th>Puan</th><th></th></tr></thead><tbody>${studentExams.map(e => `<tr><td>${e.date}</td><td>${e.name}</td><td>${e.type}</td><td>${examNet(e)}</td><td>${e.score}</td><td class="actions"><button class="btn" onclick="openExamForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/exams/${e.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted">Deneme yok.</td></tr>`}</tbody></table></div>
+          <div class="panel table-wrap"><h3>Hatalar</h3><table><thead><tr><th>Tarih</th><th>Ders</th><th>Konu</th><th>Hata Türü</th><th>Adet</th><th></th></tr></thead><tbody>${studentMistakes.map(m => `<tr><td>${m.date}</td><td>${m.subject}</td><td>${m.topic}</td><td>${m.type}</td><td>${m.count}</td><td class="actions"><button class="btn" onclick="openMistakeForm('${m.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/mistakes/${m.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted">Hata kaydı yok.</td></tr>`}</tbody></table></div>
+          <div class="panel"><h3>Öğretmen Notları</h3>${notes().map(n => `<p><b>${n.date}</b><br>${n.text}</p>`).join("") || "<p class='muted'>Henüz not yok.</p>"}</div>
         </div>`;
       line("examChart", exams().map(e => e.name), exams().map(examNet), "Net");
+      bar("subjectChart", Object.entries(group(entries(), "subject", e => e.total)), "Soru");
     }
 
     function entry() {
@@ -350,10 +375,10 @@
       contentEl.innerHTML = `
         <div class="panel"><button class="btn primary" onclick="openEntryForm()">Kayıt Ekle</button></div>
         <div class="panel table-wrap" style="margin-top:18px">
-          <table><thead><tr><th>Tarih</th><th>Öğrenci</th><th>Ders</th><th>Konu</th><th>Toplam</th><th>Doğru</th><th>Yanlış</th><th>Boş</th><th>Net</th><th></th></tr></thead><tbody>
+          <table><thead><tr><th>Tarih</th><th>Öğrenci</th><th>Ders</th><th>Konu</th><th>Süre</th><th>Toplam</th><th>Doğru</th><th>Yanlış</th><th>Boş</th><th>Net</th><th></th></tr></thead><tbody>
           ${state.entries.map(e => {
             const st = state.students.find(s => s.id === e.studentId);
-            return `<tr><td>${e.date}</td><td>${st?.name || ""}</td><td>${e.subject}</td><td>${e.topic}</td><td>${e.total}</td><td>${e.correct}</td><td>${e.wrong}</td><td>${e.blank}</td><td>${net(e.correct, e.wrong)}</td><td class="actions"><button class="btn" onclick="openEntryForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/entries/${e.id}')">Sil</button></td></tr>`;
+            return `<tr><td>${e.date}</td><td>${st?.name || ""}</td><td>${e.subject}</td><td>${e.topic}</td><td>${formatDuration(e.studyMinutes || 0)}</td><td>${e.total}</td><td>${e.correct}</td><td>${e.wrong}</td><td>${e.blank}</td><td>${net(e.correct, e.wrong)}</td><td class="actions"><button class="btn" onclick="openEntryForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/entries/${e.id}')">Sil</button></td></tr>`;
           }).join("")}
           </tbody></table>
         </div>`;
@@ -495,6 +520,7 @@
           <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
           <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
           <div class="field"><label>Konu</label><input name="topic" value="${item.topic || ""}" required></div>
+          <div class="field"><label>Çalışma süresi (dk)</label><input name="studyMinutes" type="number" min="0" value="${item.studyMinutes ?? 0}" required></div>
           <div class="field"><label>Toplam</label><input name="total" type="number" min="0" value="${item.total ?? ""}" required></div>
           <div class="field"><label>Doğru</label><input name="correct" type="number" min="0" value="${item.correct ?? ""}" required></div>
           <div class="field"><label>Yanlış</label><input name="wrong" type="number" min="0" value="${item.wrong ?? ""}" required></div>
@@ -505,7 +531,7 @@
     async function saveEntry(ev, id = "") {
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
-      ["total", "correct", "wrong", "blank"].forEach(k => b[k] = Number(b[k]));
+      ["total", "correct", "wrong", "blank", "studyMinutes"].forEach(k => b[k] = Number(b[k]));
       await api.req(id ? `/api/entries/${id}` : "/api/entries", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
       closeModal();
       await load();

@@ -51,6 +51,7 @@ async function initDb() {
       correct integer not null default 0,
       wrong integer not null default 0,
       blank integer not null default 0,
+      study_minutes integer not null default 0,
       created_at timestamptz not null default now()
     );
 
@@ -102,6 +103,7 @@ async function initDb() {
     );
   `);
   await pool.query("alter table students add column if not exists archived boolean not null default false");
+  await pool.query("alter table entries add column if not exists study_minutes integer not null default 0");
 
   const [{ count }] = await query("select count(*)::int as count from students");
   if (count === 0) await seedDb();
@@ -159,9 +161,9 @@ async function seedStudent(student) {
       const wrong = Math.max(2, Math.round(total * (0.2 - (5 - week) * 0.01)));
       const blank = Math.max(1, Math.round(total * 0.05));
       await query(
-        `insert into entries(student_id,date,subject,topic,total,correct,wrong,blank)
-         values($1,current_date - ($2::int * interval '1 day'),$3,$4,$5,$6,$7,$8)`,
-        [student.id, week * 7 + i, subjectNames[i], topics[i], total, total - wrong - blank, wrong, blank]
+        `insert into entries(student_id,date,subject,topic,total,correct,wrong,blank,study_minutes)
+         values($1,current_date - ($2::int * interval '1 day'),$3,$4,$5,$6,$7,$8,$9)`,
+        [student.id, week * 7 + i, subjectNames[i], topics[i], total, total - wrong - blank, wrong, blank, 45 + i * 5]
       );
     }
   }
@@ -218,7 +220,7 @@ app.get("/api/state", async (req, res) => {
   }
 
   const entries = await query(
-    `select id,student_id as "studentId",to_char(date,'YYYY-MM-DD') as date,subject,topic,total,correct,wrong,blank
+    `select id,student_id as "studentId",to_char(date,'YYYY-MM-DD') as date,subject,topic,total,correct,wrong,blank,study_minutes as "studyMinutes"
      from entries where student_id = any($1::uuid[]) order by date desc, created_at desc`,
     [ids]
   );
@@ -303,8 +305,8 @@ app.post("/api/subjects/:id/topics", async (req, res) => {
 app.post("/api/entries", async (req, res) => {
   const e = req.body;
   await query(
-    "insert into entries(student_id,date,subject,topic,total,correct,wrong,blank) values($1,$2,$3,$4,$5,$6,$7,$8)",
-    [e.studentId, e.date, e.subject, e.topic, e.total, e.correct, e.wrong, e.blank]
+    "insert into entries(student_id,date,subject,topic,total,correct,wrong,blank,study_minutes) values($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+    [e.studentId, e.date, e.subject, e.topic, e.total, e.correct, e.wrong, e.blank, e.studyMinutes || 0]
   );
   res.status(201).json({ ok: true });
 });
@@ -313,9 +315,9 @@ app.put("/api/entries/:id", async (req, res) => {
   const e = req.body;
   await query(
     `update entries
-     set student_id=$1,date=$2,subject=$3,topic=$4,total=$5,correct=$6,wrong=$7,blank=$8
-     where id=$9`,
-    [e.studentId, e.date, e.subject, e.topic, e.total, e.correct, e.wrong, e.blank, req.params.id]
+     set student_id=$1,date=$2,subject=$3,topic=$4,total=$5,correct=$6,wrong=$7,blank=$8,study_minutes=$9
+     where id=$10`,
+    [e.studentId, e.date, e.subject, e.topic, e.total, e.correct, e.wrong, e.blank, e.studyMinutes || 0, req.params.id]
   );
   res.json({ ok: true });
 });
