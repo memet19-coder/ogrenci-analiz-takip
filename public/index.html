@@ -495,7 +495,6 @@
             </nav>
             <div class="side-title">Yönetim</div>
             <nav class="nav">
-              <button data-page="subjects">📚 Ders & Konu</button>
               <button data-page="reports">📄 Raporlar</button>
               <button data-page="settings">⚙️ Ayarlar</button>
             </nav>
@@ -537,7 +536,7 @@
     function renderPage() {
       charts.forEach(c => c.destroy?.());
       charts = [];
-      const pages = { dashboard, students, entry, exams: examsPage, subjects, mistakes: mistakesPage, charts: chartsPage, reports, settings, student: studentPage, coach: coachPage };
+      const pages = { dashboard, students, entry, exams: examsPage, mistakes: mistakesPage, charts: chartsPage, reports, settings, student: studentPage, coach: coachPage };
       (pages[page] || dashboard)();
     }
 
@@ -742,15 +741,6 @@
       bar("mistakeChart", Object.entries(group(mistakes(), "type", m => m.count)), "Hata");
     }
 
-    function subjects() {
-      setTitle("Ders Takibi", "Ders ve konu yönetimi");
-      contentEl.innerHTML = `
-        <button class="btn primary" onclick="openSubjectForm()">Ders Ekle</button>
-        <div class="grid two" style="margin-top:18px">
-          ${state.subjects.map(s => `<div class="panel"><h3>${s.name}</h3><p class="muted">${s.topics.join(", ")}</p><button class="btn" onclick="openTopicForm('${s.id}')">Konu Ekle</button></div>`).join("")}
-        </div>`;
-    }
-
     function chartsPage() {
       setTitle("Gelişim Analizi", student()?.name || "");
       contentEl.innerHTML = `
@@ -934,25 +924,6 @@
       await load();
     }
 
-    function openSubjectForm() {
-      openModal("Ders Ekle", `<form onsubmit="saveSubject(event)" class="form-grid"><div class="field"><label>Ders adı</label><input name="name" required></div><div class="field wide"><label>Konular</label><input name="topics" placeholder="Virgülle ayır"></div><button class="btn primary">Kaydet</button></form>`);
-    }
-    async function saveSubject(ev) {
-      ev.preventDefault();
-      const f = Object.fromEntries(new FormData(ev.target));
-      await api.req("/api/subjects", { method: "POST", body: JSON.stringify({ name: f.name, topics: f.topics.split(",").map(x => x.trim()).filter(Boolean) }) });
-      closeModal();
-      await load();
-    }
-    function openTopicForm(id) {
-      openModal("Konu Ekle", `<form onsubmit="saveTopic(event,'${id}')"><div class="field"><label>Konu</label><input name="topic" required></div><button class="btn primary">Ekle</button></form>`);
-    }
-    async function saveTopic(ev, id) {
-      ev.preventDefault();
-      await api.req(`/api/subjects/${id}/topics`, { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(ev.target))) });
-      closeModal();
-      await load();
-    }
     function openNoteForm() {
       openModal("Öğretmen Notu", `<form onsubmit="saveNote(event)"><div class="field"><label>Not</label><textarea name="text" required></textarea></div><button class="btn primary">Kaydet</button></form>`);
     }
