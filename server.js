@@ -3,7 +3,7 @@ import pg from "pg";
 
 const { Pool } = pg;
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -30,6 +30,7 @@ async function initDb() {
       target_net numeric not null default 0,
       target_score numeric not null default 0,
       weekly_goal integer not null default 500,
+      archived boolean not null default false,
       access_code text not null unique default encode(gen_random_bytes(4), 'hex'),
       created_at timestamptz not null default now()
     );
@@ -100,6 +101,7 @@ async function initDb() {
       type text not null
     );
   `);
+  await pool.query("alter table students add column if not exists archived boolean not null default false");
 
   const [{ count }] = await query("select count(*)::int as count from students");
   if (count === 0) await seedDb();
@@ -203,7 +205,7 @@ app.get("/api/state", async (req, res) => {
   const students = await query(`
     select id,name,class_name as "className",target_exam as "targetExam",
            target_net as "targetNet",target_score as "targetScore",
-           weekly_goal as "weeklyGoal",created_at as "createdAt"
+           weekly_goal as "weeklyGoal",archived,created_at as "createdAt"
     from students
     order by created_at
   `);
@@ -275,6 +277,11 @@ app.put("/api/students/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
+app.patch("/api/students/:id/archive", async (req, res) => {
+  await query("update students set archived=$1 where id=$2", [Boolean(req.body.archived), req.params.id]);
+  res.json({ ok: true });
+});
+
 app.delete("/api/students/:id", async (req, res) => {
   await query("delete from students where id=$1", [req.params.id]);
   res.json({ ok: true });
@@ -302,6 +309,17 @@ app.post("/api/entries", async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
+app.put("/api/entries/:id", async (req, res) => {
+  const e = req.body;
+  await query(
+    `update entries
+     set student_id=$1,date=$2,subject=$3,topic=$4,total=$5,correct=$6,wrong=$7,blank=$8
+     where id=$9`,
+    [e.studentId, e.date, e.subject, e.topic, e.total, e.correct, e.wrong, e.blank, req.params.id]
+  );
+  res.json({ ok: true });
+});
+
 app.delete("/api/entries/:id", async (req, res) => {
   await query("delete from entries where id=$1", [req.params.id]);
   res.json({ ok: true });
@@ -322,6 +340,26 @@ app.post("/api/exams", async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
+app.put("/api/exams/:id", async (req, res) => {
+  const e = req.body;
+  await query("update exams set student_id=$1,name=$2,date=$3,type=$4,score=$5 where id=$6", [
+    e.studentId,
+    e.name,
+    e.date,
+    e.type,
+    e.score,
+    req.params.id
+  ]);
+  await query("delete from exam_details where exam_id=$1", [req.params.id]);
+  for (const d of e.details || []) {
+    await query(
+      "insert into exam_details(exam_id,subject,total,correct,wrong,blank) values($1,$2,$3,$4,$5,$6)",
+      [req.params.id, d.subject, d.total, d.correct, d.wrong, d.blank]
+    );
+  }
+  res.json({ ok: true });
+});
+
 app.delete("/api/exams/:id", async (req, res) => {
   await query("delete from exams where id=$1", [req.params.id]);
   res.json({ ok: true });
@@ -334,6 +372,17 @@ app.post("/api/mistakes", async (req, res) => {
     [m.studentId, m.date, m.subject, m.topic, m.type, m.count, m.note || ""]
   );
   res.status(201).json({ ok: true });
+});
+
+app.put("/api/mistakes/:id", async (req, res) => {
+  const m = req.body;
+  await query(
+    `update mistakes
+     set student_id=$1,date=$2,subject=$3,topic=$4,type=$5,count=$6,note=$7
+     where id=$8`,
+    [m.studentId, m.date, m.subject, m.topic, m.type, m.count, m.note || "", req.params.id]
+  );
+  res.json({ ok: true });
 });
 
 app.delete("/api/mistakes/:id", async (req, res) => {

@@ -83,7 +83,10 @@
     .field label { font-size: 12px; color: var(--muted); font-weight: 900; }
     .field input, .field select, .field textarea { border: 1px solid var(--line); border-radius: 8px; padding: 11px; background: #fff; min-height: 42px; width: 100%; }
     textarea { min-height: 96px; resize: vertical; }
-    .chart { height: 270px; }
+    .chart-box { position: relative; height: 280px; min-height: 280px; max-height: 280px; width: 100%; overflow: hidden; }
+    .chart-box canvas { display: block; width: 100% !important; height: 100% !important; max-height: 280px !important; }
+    .chart { display: block; width: 100% !important; height: 100% !important; max-height: 280px !important; }
+    .student-card.archived { opacity: .72; filter: grayscale(.35); }
     .modal { position: fixed; inset: 0; background: rgba(12, 20, 28, .42); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 50; }
     .modal.open { display: flex; }
     .modal-box { width: min(900px, 100%); max-height: 88vh; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
@@ -154,6 +157,8 @@
     function exams(id = activeStudentId) { return state.exams.filter(e => e.studentId === id); }
     function mistakes(id = activeStudentId) { return state.mistakes.filter(e => e.studentId === id); }
     function notes(id = activeStudentId) { return state.notes.filter(e => e.studentId === id); }
+    function activeStudents() { return state.students.filter(s => !s.archived); }
+    function archivedStudents() { return state.students.filter(s => s.archived); }
     function student() { return state.students.find(s => s.id === activeStudentId) || state.students[0]; }
     function totalQuestions(id) { return entries(id).reduce((s, e) => s + Number(e.total), 0); }
     function success(id) {
@@ -181,8 +186,8 @@
 
     async function load() {
       state = await api.req("/api/state");
-      if (!activeStudentId || !state.students.some(s => s.id === activeStudentId)) {
-        activeStudentId = state.students[0]?.id || "";
+      if (!activeStudentId || !state.students.some(s => s.id === activeStudentId) || state.students.find(s => s.id === activeStudentId)?.archived) {
+        activeStudentId = activeStudents()[0]?.id || state.students[0]?.id || "";
       }
       localStorage.setItem("activeStudentId", activeStudentId);
       renderApp();
@@ -256,25 +261,33 @@
 
     function dashboard() {
       setTitle("Ana Ekran", "Öğrenci takip ve akademik gelişim özeti");
-      const week = state.students.reduce((s, st) => s + weekTotal(st.id), 0);
+      const active = activeStudents();
+      const week = active.reduce((s, st) => s + weekTotal(st.id), 0);
       const todayQ = state.entries.filter(e => e.date === today()).reduce((s, e) => s + Number(e.total), 0);
       contentEl.innerHTML = `
+        <div class="panel" style="margin-bottom:18px">
+          <div class="actions">
+            <button class="btn" onclick="openStudentForm('${s.id}')">Öğrenci Bilgilerini Düzenle</button>
+            <button class="btn" onclick="archiveStudent('${s.id}', ${!s.archived})">${s.archived ? "Arşivden Çıkar" : "Arşive Al"}</button>
+            <button class="btn danger" onclick="deleteStudent('${s.id}')">Kalıcı Sil</button>
+          </div>
+        </div>
         <div class="grid four">
-          <div class="stat" style="--blob:#eef2ff"><span>👥</span><strong>${state.students.length}</strong><small>Aktif Öğrenci</small></div>
+          <div class="stat" style="--blob:#eef2ff"><span>👥</span><strong>${active.length}</strong><small>Aktif Öğrenci</small></div>
           <div class="stat" style="--blob:#f5ecff"><span>✏️</span><strong>${state.entries.filter(e => e.date === today()).length}</strong><small>Bugün Girilen Kayıt</small></div>
           <div class="stat" style="--blob:#eaf8f3"><span>📊</span><strong>${fmt(todayQ)}</strong><small>Bugün Toplam Soru</small></div>
           <div class="stat" style="--blob:#fff5e9"><span>📈</span><strong>${fmt(week)}</strong><small>Bu Hafta Toplam Soru</small></div>
         </div>
         <div class="section" style="margin-top:28px">
-          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${state.students.length} öğrenci</div></div><button class="btn dark" onclick="page='entry';renderPage()">Hızlı Kayıt</button></div>
-          <div class="cards" id="cards">${state.students.map(card).join("")}</div>
+          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif · ${archivedStudents().length} arşiv</div></div><button class="btn dark" onclick="page='entry';renderPage()">Hızlı Kayıt</button></div>
+          <div class="cards" id="cards">${active.map(card).join("")}</div>
         </div>`;
     }
 
     function card(s, i) {
       const recent = entries(s.id).sort((a, b) => b.date.localeCompare(a.date))[0];
-      return `<article class="student-card" data-name="${s.name.toLowerCase()}" style="--card:${colors[i % colors.length]}" onclick="activeStudentId='${s.id}';localStorage.setItem('activeStudentId',activeStudentId);page='student';renderPage()">
-        <div class="card-top"><div class="avatar">${initials(s.name)}</div><span class="pill">Aktif</span></div>
+      return `<article class="student-card ${s.archived ? "archived" : ""}" data-name="${s.name.toLowerCase()}" style="--card:${colors[i % colors.length]}" onclick="activeStudentId='${s.id}';localStorage.setItem('activeStudentId',activeStudentId);page='student';renderPage()">
+        <div class="card-top"><div class="avatar">${initials(s.name)}</div><span class="pill">${s.archived ? "Arşiv" : "Aktif"}</span></div>
         <div><h3>${s.name}</h3><div class="muted">${s.className} · ${s.targetExam}</div></div>
         <div class="metric-grid">
           <div class="mini"><strong>${fmt(weekTotal(s.id))}</strong><small>Bu hafta</small></div>
@@ -293,11 +306,19 @@
 
     function students() {
       setTitle("Öğrenciler", "Öğrenci bilgileri ve hedef yönetimi");
+      const active = activeStudents();
+      const archived = archivedStudents();
       contentEl.innerHTML = `
-        <div class="section"><div class="cards">${state.students.map(card).join("")}</div></div>
+        <div class="section"><div class="section-toolbar"><div><b>Aktif Öğrenciler</b><div class="muted">${active.length} öğrenci</div></div></div><div class="cards">${active.map(card).join("")}</div></div>
         <div class="panel table-wrap" style="margin-top:18px">
           <table><thead><tr><th>Öğrenci</th><th>Hedef</th><th>Haftalık Hedef</th><th>Toplam Soru</th><th>Başarı</th><th>İşlem</th></tr></thead><tbody>
-          ${state.students.map(s => `<tr><td><b>${s.name}</b><div class="muted">${s.className}</div></td><td>${s.targetExam}<div class="muted">${s.targetNet} net · ${s.targetScore} puan</div></td><td>${fmt(s.weeklyGoal)}</td><td>${fmt(totalQuestions(s.id))}</td><td><span class="badge good">%${success(s.id)}</span></td><td class="actions"><button class="btn" onclick="openStudentForm('${s.id}')">Düzenle</button><button class="btn danger" onclick="deleteStudent('${s.id}')">Sil</button></td></tr>`).join("")}
+          ${active.map(s => `<tr><td><b>${s.name}</b><div class="muted">${s.className}</div></td><td>${s.targetExam}<div class="muted">${s.targetNet} net · ${s.targetScore} puan</div></td><td>${fmt(s.weeklyGoal)}</td><td>${fmt(totalQuestions(s.id))}</td><td><span class="badge good">%${success(s.id)}</span></td><td class="actions"><button class="btn" onclick="openStudentForm('${s.id}')">Düzenle</button><button class="btn" onclick="archiveStudent('${s.id}', true)">Arşive Al</button><button class="btn danger" onclick="deleteStudent('${s.id}')">Kalıcı Sil</button></td></tr>`).join("")}
+          </tbody></table>
+        </div>
+        <div class="panel table-wrap" style="margin-top:18px">
+          <h3>Arşivlenen Öğrenciler</h3>
+          <table><thead><tr><th>Öğrenci</th><th>Hedef</th><th>Toplam Soru</th><th>Başarı</th><th>İşlem</th></tr></thead><tbody>
+          ${archived.map(s => `<tr><td><b>${s.name}</b><div class="muted">${s.className}</div></td><td>${s.targetExam}</td><td>${fmt(totalQuestions(s.id))}</td><td><span class="badge">%${success(s.id)}</span></td><td class="actions"><button class="btn" onclick="archiveStudent('${s.id}', false)">Arşivden Çıkar</button><button class="btn" onclick="openStudentForm('${s.id}')">Düzenle</button><button class="btn danger" onclick="deleteStudent('${s.id}')">Kalıcı Sil</button></td></tr>`).join("") || `<tr><td colspan="5" class="muted">Arşivde öğrenci yok.</td></tr>`}
           </tbody></table>
         </div>`;
     }
@@ -315,7 +336,7 @@
           <div class="stat"><strong>${fmt(weekTotal(s.id))}</strong><small>Bu hafta</small></div>
         </div>
         <div class="grid two" style="margin-top:18px">
-          <div class="panel"><h3>Deneme net gelişimi</h3><canvas class="chart" id="examChart"></canvas></div>
+          <div class="panel"><h3>Deneme net gelişimi</h3><div class="chart-box"><canvas class="chart" id="examChart"></canvas></div></div>
           <div class="panel"><h3>Öğretmen notları</h3><div class="actions"><button class="btn primary" onclick="openNoteForm()">Not Ekle</button></div>${notes().map(n => `<p><b>${n.date}</b><br>${n.text}</p>`).join("") || "<p class='muted'>Henüz not yok.</p>"}</div>
           <div class="panel"><h3>Yanlış konu listesi</h3>${Object.entries(group(mistakes(), "topic", m => m.count)).sort((a, b) => b[1] - a[1]).map(x => `<p><b>${x[0]}</b> <span class="badge bad">${x[1]}</span></p>`).join("") || "<p class='muted'>Kayıt yok.</p>"}</div>
           <div class="panel"><h3>Hızlı işlemler</h3><div class="actions"><button class="btn" onclick="page='entry';renderPage()">Soru Gir</button><button class="btn" onclick="page='exams';renderPage()">Deneme Gir</button><button class="btn" onclick="page='mistakes';renderPage()">Yanlış Gir</button></div></div>
@@ -332,7 +353,7 @@
           <table><thead><tr><th>Tarih</th><th>Öğrenci</th><th>Ders</th><th>Konu</th><th>Toplam</th><th>Doğru</th><th>Yanlış</th><th>Boş</th><th>Net</th><th></th></tr></thead><tbody>
           ${state.entries.map(e => {
             const st = state.students.find(s => s.id === e.studentId);
-            return `<tr><td>${e.date}</td><td>${st?.name || ""}</td><td>${e.subject}</td><td>${e.topic}</td><td>${e.total}</td><td>${e.correct}</td><td>${e.wrong}</td><td>${e.blank}</td><td>${net(e.correct, e.wrong)}</td><td><button class="btn danger" onclick="deleteItem('/api/entries/${e.id}')">Sil</button></td></tr>`;
+            return `<tr><td>${e.date}</td><td>${st?.name || ""}</td><td>${e.subject}</td><td>${e.topic}</td><td>${e.total}</td><td>${e.correct}</td><td>${e.wrong}</td><td>${e.blank}</td><td>${net(e.correct, e.wrong)}</td><td class="actions"><button class="btn" onclick="openEntryForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/entries/${e.id}')">Sil</button></td></tr>`;
           }).join("")}
           </tbody></table>
         </div>`;
@@ -343,11 +364,11 @@
       contentEl.innerHTML = `
         <div class="actions"><button class="btn primary" onclick="openExamForm()">Deneme Ekle</button></div>
         <div class="grid two" style="margin-top:18px">
-          <div class="panel"><h3>Seçili öğrenci net gelişimi</h3><canvas class="chart" id="examLine"></canvas></div>
+          <div class="panel"><h3>Seçili öğrenci net gelişimi</h3><div class="chart-box"><canvas class="chart" id="examLine"></canvas></div></div>
           <div class="panel table-wrap"><table><thead><tr><th>Öğrenci</th><th>Deneme</th><th>Tarih</th><th>Tür</th><th>Net</th><th>Puan</th><th></th></tr></thead><tbody>
           ${state.exams.map(e => {
             const st = state.students.find(s => s.id === e.studentId);
-            return `<tr><td>${st?.name || ""}</td><td>${e.name}</td><td>${e.date}</td><td>${e.type}</td><td>${examNet(e)}</td><td>${e.score}</td><td><button class="btn danger" onclick="deleteItem('/api/exams/${e.id}')">Sil</button></td></tr>`;
+            return `<tr><td>${st?.name || ""}</td><td>${e.name}</td><td>${e.date}</td><td>${e.type}</td><td>${examNet(e)}</td><td>${e.score}</td><td class="actions"><button class="btn" onclick="openExamForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/exams/${e.id}')">Sil</button></td></tr>`;
           }).join("")}
           </tbody></table></div>
         </div>`;
@@ -359,11 +380,11 @@
       contentEl.innerHTML = `
         <button class="btn primary" onclick="openMistakeForm()">Yanlış Ekle</button>
         <div class="grid two" style="margin-top:18px">
-          <div class="panel"><h3>Hata türleri</h3><canvas class="chart" id="mistakeChart"></canvas></div>
+          <div class="panel"><h3>Hata türleri</h3><div class="chart-box"><canvas class="chart" id="mistakeChart"></canvas></div></div>
           <div class="panel table-wrap"><table><thead><tr><th>Öğrenci</th><th>Ders</th><th>Konu</th><th>Hata</th><th>Adet</th><th></th></tr></thead><tbody>
           ${state.mistakes.map(m => {
             const st = state.students.find(s => s.id === m.studentId);
-            return `<tr><td>${st?.name || ""}</td><td>${m.subject}</td><td>${m.topic}</td><td>${m.type}</td><td>${m.count}</td><td><button class="btn danger" onclick="deleteItem('/api/mistakes/${m.id}')">Sil</button></td></tr>`;
+            return `<tr><td>${st?.name || ""}</td><td>${m.subject}</td><td>${m.topic}</td><td>${m.type}</td><td>${m.count}</td><td class="actions"><button class="btn" onclick="openMistakeForm('${m.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/mistakes/${m.id}')">Sil</button></td></tr>`;
           }).join("")}
           </tbody></table></div>
         </div>`;
@@ -383,10 +404,10 @@
       setTitle("Gelişim Analizi", student()?.name || "");
       contentEl.innerHTML = `
         <div class="grid two">
-          <div class="panel"><h3>Derslere göre soru</h3><canvas class="chart" id="qchart"></canvas></div>
-          <div class="panel"><h3>Derslere göre doğru</h3><canvas class="chart" id="schart"></canvas></div>
-          <div class="panel"><h3>Deneme net gelişimi</h3><canvas class="chart" id="trialChart"></canvas></div>
-          <div class="panel"><h3>Konu bazlı hata</h3><canvas class="chart" id="topicChart"></canvas></div>
+          <div class="panel"><h3>Derslere göre soru</h3><div class="chart-box"><canvas class="chart" id="qchart"></canvas></div></div>
+          <div class="panel"><h3>Derslere göre doğru</h3><div class="chart-box"><canvas class="chart" id="schart"></canvas></div></div>
+          <div class="panel"><h3>Deneme net gelişimi</h3><div class="chart-box"><canvas class="chart" id="trialChart"></canvas></div></div>
+          <div class="panel"><h3>Konu bazlı hata</h3><div class="chart-box"><canvas class="chart" id="topicChart"></canvas></div></div>
         </div>`;
       bar("qchart", Object.entries(group(entries(), "subject", e => e.total)), "Soru");
       bar("schart", Object.entries(group(entries(), "subject", e => e.correct)), "Doğru");
@@ -424,10 +445,10 @@
       document.getElementById("modal").classList.add("open");
     }
     function closeModal() { document.getElementById("modal").classList.remove("open"); }
-    function studentSelect() {
-      return `<div class="field"><label>Öğrenci</label><select name="studentId">${state.students.map(s => `<option value="${s.id}" ${s.id === activeStudentId ? "selected" : ""}>${s.name}</option>`).join("")}</select></div>`;
+    function studentSelect(selectedId = activeStudentId) {
+      return `<div class="field"><label>Öğrenci</label><select name="studentId">${state.students.map(s => `<option value="${s.id}" ${s.id === selectedId ? "selected" : ""}>${s.name}${s.archived ? " (Arşiv)" : ""}</option>`).join("")}</select></div>`;
     }
-    function subjectOptions() { return state.subjects.map(s => `<option>${s.name}</option>`).join(""); }
+    function subjectOptions(selected = "") { return state.subjects.map(s => `<option ${s.name === selected ? "selected" : ""}>${s.name}</option>`).join(""); }
 
     function openStudentForm(id) {
       const s = state.students.find(x => x.id === id) || {};
@@ -455,78 +476,87 @@
       await api.req(`/api/students/${id}`, { method: "DELETE" });
       await load();
     }
+    async function archiveStudent(id, archived) {
+      await api.req(`/api/students/${id}/archive`, { method: "PATCH", body: JSON.stringify({ archived }) });
+      if (archived && activeStudentId === id) activeStudentId = activeStudents().find(s => s.id !== id)?.id || "";
+      await load();
+    }
     async function deleteItem(path) {
       if (!confirm("Kayıt silinsin mi?")) return;
       await api.req(path, { method: "DELETE" });
       await load();
     }
 
-    function openEntryForm() {
-      openModal("Günlük Kayıt", `
-        <form onsubmit="saveEntry(event)" class="form-grid">
-          ${studentSelect()}
-          <div class="field"><label>Tarih</label><input name="date" type="date" value="${today()}" required></div>
-          <div class="field"><label>Ders</label><select name="subject">${subjectOptions()}</select></div>
-          <div class="field"><label>Konu</label><input name="topic" required></div>
-          <div class="field"><label>Toplam</label><input name="total" type="number" min="0" required></div>
-          <div class="field"><label>Doğru</label><input name="correct" type="number" min="0" required></div>
-          <div class="field"><label>Yanlış</label><input name="wrong" type="number" min="0" required></div>
-          <div class="field"><label>Boş</label><input name="blank" type="number" min="0" required></div>
+    function openEntryForm(id = "") {
+      const item = state.entries.find(e => e.id === id) || {};
+      openModal(id ? "Günlük Kaydı Düzenle" : "Günlük Kayıt", `
+        <form onsubmit="saveEntry(event,'${id}')" class="form-grid">
+          ${studentSelect(item.studentId)}
+          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
+          <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
+          <div class="field"><label>Konu</label><input name="topic" value="${item.topic || ""}" required></div>
+          <div class="field"><label>Toplam</label><input name="total" type="number" min="0" value="${item.total ?? ""}" required></div>
+          <div class="field"><label>Doğru</label><input name="correct" type="number" min="0" value="${item.correct ?? ""}" required></div>
+          <div class="field"><label>Yanlış</label><input name="wrong" type="number" min="0" value="${item.wrong ?? ""}" required></div>
+          <div class="field"><label>Boş</label><input name="blank" type="number" min="0" value="${item.blank ?? ""}" required></div>
           <button class="btn primary">Kaydet</button>
         </form>`);
     }
-    async function saveEntry(ev) {
+    async function saveEntry(ev, id = "") {
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
       ["total", "correct", "wrong", "blank"].forEach(k => b[k] = Number(b[k]));
-      await api.req("/api/entries", { method: "POST", body: JSON.stringify(b) });
+      await api.req(id ? `/api/entries/${id}` : "/api/entries", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
       closeModal();
       await load();
     }
 
-    function openExamForm() {
+    function openExamForm(id = "") {
+      const item = state.exams.find(e => e.id === id) || {};
       const lessonList = ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce"];
-      openModal("Deneme Ekle", `
-        <form onsubmit="saveExam(event)" class="grid">
+      const detailFor = subject => (item.details || []).find(d => d.subject === subject) || {};
+      openModal(id ? "Deneme Düzenle" : "Deneme Ekle", `
+        <form onsubmit="saveExam(event,'${id}')" class="grid">
           <div class="form-grid">
-            ${studentSelect()}
-            <div class="field"><label>Deneme adı</label><input name="name" required></div>
-            <div class="field"><label>Tarih</label><input name="date" type="date" value="${today()}" required></div>
-            <div class="field"><label>Tür</label><input name="type" value="${student()?.targetExam || "TYT"}" required></div>
-            <div class="field"><label>Puan</label><input name="score" type="number" required></div>
+            ${studentSelect(item.studentId)}
+            <div class="field"><label>Deneme adı</label><input name="name" value="${item.name || ""}" required></div>
+            <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
+            <div class="field"><label>Tür</label><input name="type" value="${item.type || student()?.targetExam || "TYT"}" required></div>
+            <div class="field"><label>Puan</label><input name="score" type="number" value="${item.score ?? ""}" required></div>
           </div>
-          <div class="grid two">${lessonList.map(s => `<div class="panel"><h3>${s}</h3><div class="form-grid"><div class="field"><label>Toplam</label><input name="${s}_total" type="number" value="20"></div><div class="field"><label>Doğru</label><input name="${s}_correct" type="number" value="12"></div><div class="field"><label>Yanlış</label><input name="${s}_wrong" type="number" value="5"></div><div class="field"><label>Boş</label><input name="${s}_blank" type="number" value="3"></div></div></div>`).join("")}</div>
+          <div class="grid two">${lessonList.map(s => { const d = detailFor(s); return `<div class="panel"><h3>${s}</h3><div class="form-grid"><div class="field"><label>Toplam</label><input name="${s}_total" type="number" value="${d.total ?? 20}"></div><div class="field"><label>Doğru</label><input name="${s}_correct" type="number" value="${d.correct ?? 12}"></div><div class="field"><label>Yanlış</label><input name="${s}_wrong" type="number" value="${d.wrong ?? 5}"></div><div class="field"><label>Boş</label><input name="${s}_blank" type="number" value="${d.blank ?? 3}"></div></div></div>` }).join("")}</div>
           <button class="btn primary">Kaydet</button>
         </form>`);
     }
-    async function saveExam(ev) {
+    async function saveExam(ev, id = "") {
       ev.preventDefault();
       const f = Object.fromEntries(new FormData(ev.target));
       const lessonList = ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce"];
       const details = lessonList.map(s => ({ subject: s, total: +f[`${s}_total`], correct: +f[`${s}_correct`], wrong: +f[`${s}_wrong`], blank: +f[`${s}_blank`] }));
-      await api.req("/api/exams", { method: "POST", body: JSON.stringify({ studentId: f.studentId, name: f.name, date: f.date, type: f.type, score: +f.score, details }) });
+      await api.req(id ? `/api/exams/${id}` : "/api/exams", { method: id ? "PUT" : "POST", body: JSON.stringify({ studentId: f.studentId, name: f.name, date: f.date, type: f.type, score: +f.score, details }) });
       closeModal();
       await load();
     }
 
-    function openMistakeForm() {
-      openModal("Yanlış Ekle", `
-        <form onsubmit="saveMistake(event)" class="form-grid">
-          ${studentSelect()}
-          <div class="field"><label>Tarih</label><input name="date" type="date" value="${today()}" required></div>
-          <div class="field"><label>Ders</label><select name="subject">${subjectOptions()}</select></div>
-          <div class="field"><label>Konu</label><input name="topic" required></div>
-          <div class="field"><label>Hata türü</label><select name="type">${mistakeTypes.map(t => `<option>${t}</option>`).join("")}</select></div>
-          <div class="field"><label>Adet</label><input name="count" type="number" value="1"></div>
-          <div class="field wide"><label>Not</label><input name="note"></div>
+    function openMistakeForm(id = "") {
+      const item = state.mistakes.find(m => m.id === id) || {};
+      openModal(id ? "Yanlış Düzenle" : "Yanlış Ekle", `
+        <form onsubmit="saveMistake(event,'${id}')" class="form-grid">
+          ${studentSelect(item.studentId)}
+          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
+          <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
+          <div class="field"><label>Konu</label><input name="topic" value="${item.topic || ""}" required></div>
+          <div class="field"><label>Hata türü</label><select name="type">${mistakeTypes.map(t => `<option ${t === item.type ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+          <div class="field"><label>Adet</label><input name="count" type="number" value="${item.count ?? 1}"></div>
+          <div class="field wide"><label>Not</label><input name="note" value="${item.note || ""}"></div>
           <button class="btn primary">Kaydet</button>
         </form>`);
     }
-    async function saveMistake(ev) {
+    async function saveMistake(ev, id = "") {
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
       b.count = +b.count;
-      await api.req("/api/mistakes", { method: "POST", body: JSON.stringify(b) });
+      await api.req(id ? `/api/mistakes/${id}` : "/api/mistakes", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
       closeModal();
       await load();
     }
