@@ -904,7 +904,6 @@
           ${studentSelect(item.studentId)}
           <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
           <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
-          <div class="field"><label>Konu</label><input name="topic" list="topicSuggestions" value="${item.topic || ""}" required></div>
           <div class="field"><label>Çalışma süresi (dk)</label><input name="studyMinutes" type="number" min="0" value="${item.studyMinutes ?? 0}" required></div>
           <div class="field"><label>Toplam</label><input name="total" type="number" min="0" value="${item.total ?? ""}" required></div>
           <div class="field"><label>Doğru</label><input name="correct" type="number" min="0" value="${item.correct ?? ""}" required></div>
@@ -917,6 +916,7 @@
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
       ["total", "correct", "wrong", "blank", "studyMinutes"].forEach(k => b[k] = Number(b[k]));
+      b.topic = b.subject;
       await api.req(id ? `/api/entries/${id}` : "/api/entries", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
       closeModal();
       await load();
