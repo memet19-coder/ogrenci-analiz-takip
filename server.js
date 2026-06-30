@@ -110,15 +110,49 @@ async function initDb() {
   if (count === 0) await seedDb();
 }
 
-async function normalizeMiddleSchoolSubjects() {
-  const subjects = [
-    ["Türkçe", ["Paragraf", "Sözcükte anlam", "Cümlede anlam", "Dil bilgisi", "Fiilimsi"]],
-    ["Matematik", ["Doğal sayılar", "Kesirler", "Problemler", "Cebirsel ifadeler", "Geometri"]],
-    ["Fen Bilimleri", ["Kuvvet ve hareket", "Madde", "Canlılar", "Elektrik", "Mevsimler ve iklim"]],
-    ["Sosyal Bilimler", ["Kültür ve miras", "Harita okuma", "Hak ve sorumluluklar", "Üretim dağıtım tüketim", "İnsanlar ve çevre"]],
-    ["Din Kültürü", ["İbadet", "Ahlak", "Hz. Muhammed", "Kuran", "Kader inancı"]],
-    ["İngilizce", ["Vocabulary", "Reading", "Grammar", "Dialogue", "Daily routines"]]
+function middleSchoolCurriculumSubjects() {
+  return [
+    ["Türkçe", [
+      "5. Sınıf - Oyun Dünyası", "5. Sınıf - Atatürk'ü Tanımak", "5. Sınıf - Duygularımı Tanıyorum", "5. Sınıf - Geleneklerimiz", "5. Sınıf - İletişim ve Sosyal İlişkiler", "5. Sınıf - Sağlıklı Yaşıyorum",
+      "6. Sınıf - Dilimizin Zenginliği", "6. Sınıf - Bağımsızlık Yolu", "6. Sınıf - Farklı Dünyalar", "6. Sınıf - İletişim ve Sosyal İlişkiler", "6. Sınıf - Bilim ve Teknoloji", "6. Sınıf - Lider Ruhlar",
+      "7. Sınıf - Hayat Boyu Gelişim", "7. Sınıf - Bir Hilal Uğruna", "7. Sınıf - İletişim ve Sosyal İlişkiler", "7. Sınıf - Türk Sanatı", "7. Sınıf - Okuma Kültürü", "7. Sınıf - Hak ve Sorumluluklar",
+      "8. Sınıf - İletişim ve Sosyal İlişkiler", "8. Sınıf - Vatan Sevgisi", "8. Sınıf - Doğa ve İnsan", "8. Sınıf - Türk Hikaye Geleneği ve Destanları", "8. Sınıf - Sanat ve Estetik", "8. Sınıf - Akademik Düşünme Dünyası"
+    ]],
+    ["Matematik", [
+      "5. Sınıf - Sayılar ve Nicelikler 1", "5. Sınıf - Sayılar ve Nicelikler 2", "5. Sınıf - İşlemlerle Cebirsel Düşünme", "5. Sınıf - Geometrik Şekiller", "5. Sınıf - Geometrik Nicelikler", "5. Sınıf - İstatistiksel Araştırma Süreci", "5. Sınıf - Veriden Olasılığa",
+      "6. Sınıf - Sayılar ve Nicelikler 1", "6. Sınıf - Sayılar ve Nicelikler 2", "6. Sınıf - İşlemlerle Cebirsel Düşünme ve Değişimler", "6. Sınıf - Geometrik Şekiller", "6. Sınıf - Geometrik Nicelikler", "6. Sınıf - İstatistiksel Araştırma Süreci", "6. Sınıf - Veriden Olasılığa",
+      "7. Sınıf - Sayılar ve Nicelikler 1", "7. Sınıf - Sayılar ve Nicelikler 2", "7. Sınıf - İşlemlerle Cebirsel Düşünme ve Değişimler", "7. Sınıf - Dönüşüm", "7. Sınıf - Geometrik Nicelikler 1", "7. Sınıf - Geometrik Nicelikler 2", "7. Sınıf - Geometrik Şekiller", "7. Sınıf - İstatistiksel Araştırma Süreci", "7. Sınıf - Veriden Olasılığa",
+      "8. Sınıf - Sayılar ve Nicelikler", "8. Sınıf - Cebirsel Düşünme ve Değişimler", "8. Sınıf - Geometrik Şekiller", "8. Sınıf - Geometrik Nicelikler", "8. Sınıf - Dönüşüm", "8. Sınıf - İstatistiksel Araştırma Süreci", "8. Sınıf - Veriden Olasılığa"
+    ]],
+    ["Fen Bilimleri", [
+      "5. Sınıf - Gökyüzündeki Komşularımız ve Biz", "5. Sınıf - Kuvveti Tanıyalım", "5. Sınıf - Canlıların Yapısına Yolculuk", "5. Sınıf - Işığın Dünyası", "5. Sınıf - Maddenin Doğası", "5. Sınıf - Yaşamımızdaki Elektrik", "5. Sınıf - Sürdürülebilir Yaşam ve Geri Dönüşüm",
+      "6. Sınıf - Güneş Sistemi ve Tutulmalar", "6. Sınıf - Kuvvetin Etkisinde Hareket", "6. Sınıf - Canlılarda Sistemler", "6. Sınıf - Işığın Yansıması ve Renkler", "6. Sınıf - Maddenin Ayırt Edici Özellikleri", "6. Sınıf - Elektriğin İletimi ve Direnç", "6. Sınıf - Sürdürülebilir Yaşam ve Etkileşim",
+      "7. Sınıf - Uzay Çağı", "7. Sınıf - Kuvvet ve Enerjiyi Keşfedelim", "7. Sınıf - Vücudumuzdaki Sistemler", "7. Sınıf - Işığın Kırılması ve Mercekler", "7. Sınıf - Maddenin Doğasına Yolculuk", "7. Sınıf - Elektriklenme", "7. Sınıf - Sürdürülebilir Yaşam ve Geri Dönüşüm",
+      "8. Sınıf - Mevsimler ve İklim", "8. Sınıf - Yaşamı Kolaylaştıran Kuvvet", "8. Sınıf - Yaşamın Gizemi", "8. Sınıf - Sesin Dünyası", "8. Sınıf - Periyodik Tablo ve Maddenin Etkileşimi", "8. Sınıf - Elektriğin Yolculuğu", "8. Sınıf - Sürdürülebilir Yaşam ve Madde Döngüleri"
+    ]],
+    ["Sosyal Bilimler", [
+      "5. Sınıf - Birlikte Yaşamak", "5. Sınıf - Evimiz Dünya", "5. Sınıf - Ortak Mirasımız", "5. Sınıf - Yaşayan Demokrasimiz", "5. Sınıf - Hayatımızdaki Ekonomi", "5. Sınıf - Teknoloji ve Sosyal Bilimler",
+      "6. Sınıf - Birlikte Yaşamak", "6. Sınıf - Evimiz Dünya", "6. Sınıf - Ortak Mirasımız", "6. Sınıf - Yaşayan Demokrasimiz", "6. Sınıf - Hayatımızdaki Ekonomi", "6. Sınıf - Teknoloji ve Sosyal Bilimler",
+      "7. Sınıf - Birlikte Yaşamak", "7. Sınıf - Evimiz Dünya", "7. Sınıf - Ortak Mirasımız", "7. Sınıf - Yaşayan Demokrasimiz", "7. Sınıf - Hayatımızdaki Ekonomi", "7. Sınıf - Teknoloji ve Sosyal Bilimler",
+      "8. Sınıf - Mustafa Kemal'in Hayatı", "8. Sınıf - Birinci Dünya Savaşı", "8. Sınıf - Milli Mücadele", "8. Sınıf - Türkiye Cumhuriyeti'nin Kuruluşu ve İnkılaplar"
+    ]],
+    ["Din Kültürü", [
+      "5. Sınıf - Allah İnancı", "5. Sınıf - Namaz", "5. Sınıf - Kur'an-ı Kerim", "5. Sınıf - Peygamber Kıssaları", "5. Sınıf - Mimarimizde Dini Motifler",
+      "6. Sınıf - Peygamber ve İlahi Kitap İnancı", "6. Sınıf - Ramazan ve Oruç", "6. Sınıf - Ahlaki Davranışlar", "6. Sınıf - Peygamberliğinden Önce Hz. Muhammed", "6. Sınıf - Kültürümüzdeki Dini Motifler",
+      "7. Sınıf - Melek ve Ahiret İnancı", "7. Sınıf - Hac, Umre ve Kurban", "7. Sınıf - İslam Düşüncesinde Yorumlar", "7. Sınıf - Peygamber Olarak Hz. Muhammed", "7. Sınıf - Yaşayan Dünya Dinleri",
+      "8. Sınıf - Kader İnancı", "8. Sınıf - Zekat ve Sadaka", "8. Sınıf - Din ve Sosyal Hayat", "8. Sınıf - Kur'an ve İnsan", "8. Sınıf - Müslümanların Bilim ve Kültüre Katkısı"
+    ]],
+    ["İngilizce", [
+      "5. Sınıf - Classroom Life", "5. Sınıf - Family Life", "5. Sınıf - Life in Nature", "5. Sınıf - Life in the Neighbourhood & City", "5. Sınıf - Life in the Universe & Future", "5. Sınıf - Life in the World", "5. Sınıf - Personal Life", "5. Sınıf - School Life",
+      "6. Sınıf - Classroom Life", "6. Sınıf - Family Life", "6. Sınıf - Life in Nature & Global Problems", "6. Sınıf - Life in the Neighbourhood & City", "6. Sınıf - Life in the Universe & Future", "6. Sınıf - Life in the World & Culture", "6. Sınıf - Personal Life", "6. Sınıf - School Life",
+      "7. Sınıf - School Life & Education", "7. Sınıf - Classroom Life & Learning", "7. Sınıf - Personal Life & Well-Being", "7. Sınıf - Family Life & Home", "7. Sınıf - Life in the Neighbourhood & City and Social Life", "7. Sınıf - Life in the World & Culture", "7. Sınıf - Life in Nature", "7. Sınıf - Life in the Universe & Future",
+      "8. Sınıf - School Life & Education", "8. Sınıf - Classroom Life & Learning", "8. Sınıf - Personal Life & Well-Being", "8. Sınıf - Family Life & Home", "8. Sınıf - Life in the Neighbourhood & City & Social Life", "8. Sınıf - Life in the World and Culture", "8. Sınıf - Life in Nature & Global Problems", "8. Sınıf - Life in the Universe & Future"
+    ]]
   ];
+}
+
+async function normalizeMiddleSchoolSubjects() {
+  const subjects = middleSchoolCurriculumSubjects();
   const allowed = subjects.map(([name]) => name);
   await query("update entries set subject='Sosyal Bilimler' where subject='Sosyal Bilgiler'");
   await query("update mistakes set subject='Sosyal Bilimler' where subject='Sosyal Bilgiler'");
@@ -136,14 +170,7 @@ async function normalizeMiddleSchoolSubjects() {
 }
 
 async function seedDb() {
-  const subjects = [
-    ["Türkçe", ["Paragraf", "Sözcükte anlam", "Cümlede anlam", "Dil bilgisi", "Fiilimsi"]],
-    ["Matematik", ["Doğal sayılar", "Kesirler", "Problemler", "Cebirsel ifadeler", "Geometri"]],
-    ["Fen Bilimleri", ["Kuvvet ve hareket", "Madde", "Canlılar", "Elektrik", "Mevsimler ve iklim"]],
-    ["Sosyal Bilimler", ["Kültür ve miras", "Harita okuma", "Hak ve sorumluluklar", "Üretim dağıtım tüketim", "İnsanlar ve çevre"]],
-    ["Din Kültürü", ["İbadet", "Ahlak", "Hz. Muhammed", "Kuran", "Kader inancı"]],
-    ["İngilizce", ["Vocabulary", "Reading", "Grammar", "Dialogue", "Daily routines"]]
-  ];
+  const subjects = middleSchoolCurriculumSubjects();
 
   for (const [name, topics] of subjects) {
     await query("insert into subjects(name, topics) values($1,$2) on conflict(name) do nothing", [name, topics]);

@@ -808,6 +808,10 @@
       const names = [...new Set([...middleSchoolSubjects, ...state.subjects.map(s => s.name)])].filter(name => middleSchoolSubjects.includes(name));
       return names.map(name => `<option ${name === selected ? "selected" : ""}>${name}</option>`).join("");
     }
+    function topicDatalist() {
+      const topics = [...new Set(state.subjects.flatMap(s => s.topics || []))];
+      return `<datalist id="topicSuggestions">${topics.map(t => `<option value="${htmlSafe(t)}"></option>`).join("")}</datalist>`;
+    }
     function classSelectOptions(selected = "") {
       const names = [...new Set([selected, ...classOptions].filter(Boolean))];
       return names.map(name => `<option ${name === selected ? "selected" : ""}>${name}</option>`).join("");
@@ -857,14 +861,14 @@
           ${studentSelect(item.studentId)}
           <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
           <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
-          <div class="field"><label>Konu</label><input name="topic" value="${item.topic || ""}" required></div>
+          <div class="field"><label>Konu</label><input name="topic" list="topicSuggestions" value="${item.topic || ""}" required></div>
           <div class="field"><label>Çalışma süresi (dk)</label><input name="studyMinutes" type="number" min="0" value="${item.studyMinutes ?? 0}" required></div>
           <div class="field"><label>Toplam</label><input name="total" type="number" min="0" value="${item.total ?? ""}" required></div>
           <div class="field"><label>Doğru</label><input name="correct" type="number" min="0" value="${item.correct ?? ""}" required></div>
           <div class="field"><label>Yanlış</label><input name="wrong" type="number" min="0" value="${item.wrong ?? ""}" required></div>
           <div class="field"><label>Boş</label><input name="blank" type="number" min="0" value="${item.blank ?? ""}" required></div>
           <button class="btn primary">Kaydet</button>
-        </form>`);
+        </form>${topicDatalist()}`);
     }
     async function saveEntry(ev, id = "") {
       ev.preventDefault();
@@ -914,12 +918,12 @@
           ${studentSelect(item.studentId)}
           <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
           <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
-          <div class="field"><label>Konu</label><input name="topic" value="${item.topic || ""}" required></div>
+          <div class="field"><label>Konu</label><input name="topic" list="topicSuggestions" value="${item.topic || ""}" required></div>
           <div class="field"><label>Hata türü</label><select name="type">${mistakeTypes.map(t => `<option ${t === item.type ? "selected" : ""}>${t}</option>`).join("")}</select></div>
           <div class="field"><label>Adet</label><input name="count" type="number" value="${item.count ?? 1}"></div>
           <div class="field wide"><label>Not</label><input name="note" value="${item.note || ""}"></div>
           <button class="btn primary">Kaydet</button>
-        </form>`);
+        </form>${topicDatalist()}`);
     }
     async function saveMistake(ev, id = "") {
       ev.preventDefault();
