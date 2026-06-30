@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Başarı Akademi - Öğrenci Takip</title>
   <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <style>
     :root {
       --bg: #eef3f9;
@@ -354,7 +355,7 @@
           <div class="stat"><strong>${last ? examNet(last) : 0}</strong><small>Son deneme neti</small></div>
           <div class="stat"><strong>${formatDuration(weekStudyMinutes(s.id))}</strong><small>Bu hafta çalışma</small></div>
         </div>
-        <div class="panel" style="margin-top:18px"><div class="actions"><button class="btn primary" onclick="openEntryForm()">Çalışma / Soru Ekle</button><button class="btn primary" onclick="openExamForm()">Deneme Ekle</button><button class="btn primary" onclick="openMistakeForm()">Hata Ekle</button><button class="btn" onclick="openNoteForm()">Not Ekle</button></div></div>
+        <div class="panel" style="margin-top:18px"><div class="actions"><button class="btn primary" onclick="openEntryForm()">Çalışma / Soru Ekle</button><button class="btn primary" onclick="openExamForm()">Deneme Ekle</button><button class="btn primary" onclick="openMistakeForm()">Hata Ekle</button><button class="btn" onclick="openNoteForm()">Not Ekle</button><button class="btn dark" onclick="downloadStudentPdf()">PDF Rapor</button></div></div>
         <div class="grid two" style="margin-top:18px">
           <div class="panel"><h3>Deneme net gelişimi</h3><div class="chart-box"><canvas class="chart" id="examChart"></canvas></div></div>
           <div class="panel"><h3>Derslere göre çözülen soru</h3><div class="chart-box"><canvas class="chart" id="subjectChart"></canvas></div></div>
@@ -447,10 +448,12 @@
         <div class="panel">
           <h3>${s?.name || ""} Gelişim Raporu</h3>
           <p>Toplam soru: <b>${fmt(totalQuestions(s?.id))}</b></p>
+          <p>Toplam çalışma: <b>${formatDuration(totalStudyMinutes(s?.id))}</b></p>
           <p>Başarı: <b>%${success(s?.id)}</b></p>
           <p>Son deneme neti: <b>${exams().at(-1) ? examNet(exams().at(-1)) : 0}</b></p>
           <p>Öne çıkan hata konuları: ${Object.keys(group(mistakes(), "topic", m => m.count)).join(", ") || "Kayıt yok"}</p>
-          <button class="btn primary" onclick="window.print()">Yazdır / PDF Kaydet</button>
+          <button class="btn primary" onclick="downloadStudentPdf()">PDF Rapor</button>
+          <button class="btn" onclick="printStudentReport()">Yazdır / PDF Kaydet</button>
         </div>`;
     }
 
@@ -614,6 +617,99 @@
       await api.req("/api/notes", { method: "POST", body: JSON.stringify({ studentId: activeStudentId, text: new FormData(ev.target).get("text") }) });
       closeModal();
       await load();
+    }
+
+    function reportData() {
+      const s = student();
+      const studentEntries = entries();
+      const studentExams = exams();
+      const studentMistakes = mistakes();
+      const studentNotes = notes();
+      const subjectTotals = Object.entries(group(studentEntries, "subject", e => e.total)).sort((a, b) => b[1] - a[1]);
+      const topicMistakes = Object.entries(group(studentMistakes, "topic", m => m.count)).sort((a, b) => b[1] - a[1]);
+      return { s, studentEntries, studentExams, studentMistakes, studentNotes, subjectTotals, topicMistakes };
+    }
+
+    function downloadStudentPdf() {
+      const { s, studentExams, studentNotes, subjectTotals, topicMistakes } = reportData();
+      if (!s) return;
+      if (!window.jspdf?.jsPDF) {
+        printStudentReport();
+        return;
+      }
+      const doc = new window.jspdf.jsPDF();
+      let y = 16;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("Öğrenci Gelişim Raporu", 14, y);
+      y += 10;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      const lines = [
+        `Öğrenci: ${s.name}`,
+        `Sınıf / Hedef: ${s.className} - ${s.targetExam}`,
+        `Toplam soru: ${fmt(totalQuestions(s.id))}`,
+        `Toplam çalışma: ${formatDuration(totalStudyMinutes(s.id))}`,
+        `Bu hafta çalışma: ${formatDuration(weekStudyMinutes(s.id))}`,
+        `Başarı: %${success(s.id)}`,
+        `Son deneme neti: ${studentExams.at(-1) ? examNet(studentExams.at(-1)) : 0}`,
+        "",
+        "Derslere göre soru:",
+        ...(subjectTotals.length ? subjectTotals.map(([name, total]) => `- ${name}: ${fmt(total)} soru`) : ["- Kayıt yok"]),
+        "",
+        "Son denemeler:",
+        ...(studentExams.slice(-5).map(e => `- ${e.date} | ${e.name}: ${examNet(e)} net, ${e.score} puan`) || ["- Kayıt yok"]),
+        "",
+        "Öne çıkan hata konuları:",
+        ...(topicMistakes.length ? topicMistakes.slice(0, 6).map(([name, total]) => `- ${name}: ${total}`) : ["- Kayıt yok"]),
+        "",
+        "Öğretmen notları:",
+        ...(studentNotes.length ? studentNotes.slice(0, 5).map(n => `- ${n.date}: ${n.text}`) : ["- Not yok"])
+      ];
+      lines.forEach(line => {
+        const wrapped = doc.splitTextToSize(String(line), 180);
+        if (y + wrapped.length * 7 > 282) {
+          doc.addPage();
+          y = 16;
+        }
+        doc.text(wrapped, 14, y);
+        y += wrapped.length * 7;
+      });
+      doc.save(`${s.name.toLocaleLowerCase("tr-TR").replaceAll(" ", "-")}-gelisim-raporu.pdf`);
+    }
+
+    function printStudentReport() {
+      const { s, studentExams, studentNotes, subjectTotals, topicMistakes } = reportData();
+      if (!s) return;
+      const win = window.open("", "_blank");
+      win.document.write(`
+        <html><head><title>${s.name} Gelişim Raporu</title><style>
+          body{font-family:Arial,sans-serif;padding:28px;color:#111827}
+          h1{font-size:22px} h2{font-size:16px;margin-top:24px}
+          table{width:100%;border-collapse:collapse;margin-top:8px}
+          th,td{border:1px solid #d1d5db;padding:8px;text-align:left}
+          .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+          .box{border:1px solid #d1d5db;border-radius:8px;padding:12px}
+        </style></head><body>
+          <h1>${s.name} - Öğrenci Gelişim Raporu</h1>
+          <p>${s.className} · ${s.targetExam}</p>
+          <div class="summary">
+            <div class="box"><b>${fmt(totalQuestions(s.id))}</b><br>Toplam soru</div>
+            <div class="box"><b>${formatDuration(totalStudyMinutes(s.id))}</b><br>Toplam çalışma</div>
+            <div class="box"><b>%${success(s.id)}</b><br>Başarı</div>
+          </div>
+          <h2>Derslere göre soru</h2>
+          <table><tbody>${subjectTotals.map(([name,total]) => `<tr><td>${name}</td><td>${fmt(total)}</td></tr>`).join("") || "<tr><td>Kayıt yok</td></tr>"}</tbody></table>
+          <h2>Son denemeler</h2>
+          <table><tbody>${studentExams.slice(-5).map(e => `<tr><td>${e.date}</td><td>${e.name}</td><td>${examNet(e)} net</td><td>${e.score} puan</td></tr>`).join("") || "<tr><td>Kayıt yok</td></tr>"}</tbody></table>
+          <h2>Hata konuları</h2>
+          <table><tbody>${topicMistakes.slice(0, 8).map(([name,total]) => `<tr><td>${name}</td><td>${total}</td></tr>`).join("") || "<tr><td>Kayıt yok</td></tr>"}</tbody></table>
+          <h2>Öğretmen notları</h2>
+          ${studentNotes.map(n => `<p><b>${n.date}</b><br>${n.text}</p>`).join("") || "<p>Not yok.</p>"}
+        </body></html>`);
+      win.document.close();
+      win.focus();
+      win.print();
     }
 
     function line(id, labels, data, label) {
