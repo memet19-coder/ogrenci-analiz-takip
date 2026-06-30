@@ -267,9 +267,25 @@
       localStorage.setItem("dashboardCountdowns", JSON.stringify(countdowns));
       renderPage();
     }
+    function saveCountdowns() {
+      localStorage.setItem("dashboardCountdowns", JSON.stringify(countdowns));
+    }
+    function addCountdown(ev) {
+      ev.preventDefault();
+      const f = Object.fromEntries(new FormData(ev.target));
+      countdowns.push({ name: f.name, date: f.date });
+      countdowns.sort((a, b) => a.date.localeCompare(b.date));
+      saveCountdowns();
+      renderPage();
+    }
+    function deleteCountdown(index) {
+      countdowns.splice(index, 1);
+      saveCountdowns();
+      renderPage();
+    }
     function renderCountdowns() {
       if (!countdowns.length) return `<p class="muted">Sayaç oluşturmak için otomatik butona basın.</p>`;
-      return `<div class="countdown-list">${countdowns.map(c => `<div class="countdown-item"><div><b>${c.name}</b><div class="muted">${new Date(c.date + "T12:00").toLocaleDateString("tr-TR")}</div></div><strong>${daysUntil(c.date)} gün</strong></div>`).join("")}</div>`;
+      return `<div class="countdown-list">${countdowns.map((c, i) => `<div class="countdown-item"><div><b>${c.name}</b><div class="muted">${new Date(c.date + "T12:00").toLocaleDateString("tr-TR")}</div></div><div class="actions"><strong>${daysUntil(c.date)} gün</strong><button class="btn danger" onclick="deleteCountdown(${i})">Sil</button></div></div>`).join("")}</div>`;
     }
     function renderMiniCalendar() {
       const now = dateAtNoon(today());
@@ -529,6 +545,10 @@
       setTitle("Ana Ekran", "Günlük çalışma masası");
       const active = activeStudents();
       contentEl.innerHTML = `
+        <div class="section">
+          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif öğrenci</div></div><button class="btn dark" onclick="page='student';renderPage()">Öğrenci Takibi</button></div>
+          <div class="cards" id="cards">${active.map(card).join("")}</div>
+        </div>
         <div class="desk-grid">
           <div class="panel">
             <div class="section-toolbar"><div><b>Pomodoro Çalışma Saati</b><div class="muted" id="pomodoroMode">${pomodoroMode}</div></div></div>
@@ -545,17 +565,18 @@
             </div>
           </div>
           <div class="panel">
-            <div class="section-toolbar"><div><b>Mini Takvim</b><div class="muted">Kayıt girilen günler işaretlenir</div></div></div>
+            <div class="section-toolbar"><div><b>Mini Takvim</b></div></div>
             ${renderMiniCalendar()}
           </div>
           <div class="panel">
             <div class="section-toolbar"><div><b>Geri Sayımlar</b><div class="muted">Hedef tarihleri hızlı takip</div></div><button class="btn" onclick="autoCountdowns()">Otomatik Oluştur</button></div>
+            <form class="form-grid" onsubmit="addCountdown(event)" style="grid-template-columns:1fr 150px auto">
+              <div class="field"><label>Başlık</label><input name="name" placeholder="Örn. Matematik denemesi" required></div>
+              <div class="field"><label>Tarih</label><input name="date" type="date" value="${today(7)}" required></div>
+              <div class="field"><label>&nbsp;</label><button class="btn primary">Ekle</button></div>
+            </form>
             ${renderCountdowns()}
           </div>
-        </div>
-        <div class="section" style="margin-top:28px">
-          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif öğrenci</div></div><button class="btn dark" onclick="page='student';renderPage()">Öğrenci Takibi</button></div>
-          <div class="cards" id="cards">${active.map(card).join("")}</div>
         </div>`;
     }
 
