@@ -95,6 +95,16 @@ async function initDb() {
       created_at timestamptz not null default now()
     );
 
+    create table if not exists reading_entries (
+      id uuid primary key default gen_random_uuid(),
+      student_id uuid not null references students(id) on delete cascade,
+      date date not null,
+      book_title text not null default '',
+      pages integer not null default 0,
+      note text not null default '',
+      created_at timestamptz not null default now()
+    );
+
     create table if not exists upcoming_exams (
       id uuid primary key default gen_random_uuid(),
       name text not null,
@@ -250,6 +260,14 @@ async function seedStudent(student) {
     student.id,
     "Problem ve paragraf çalışmalarında düzenli takip önerilir."
   ]);
+
+  for (let i = 0; i < 5; i++) {
+    await query(
+      `insert into reading_entries(student_id,date,book_title,pages,note)
+       values($1,current_date - ($2::int * interval '1 day'),$3,$4,$5)`,
+      [student.id, i * 2, "Haftalık okuma kitabı", 12 + i * 3, "Günlük okuma takibi"]
+    );
+  }
 }
 
 app.get("/api/state", async (req, res) => {
@@ -265,7 +283,7 @@ app.get("/api/state", async (req, res) => {
   const upcomingExams = await query("select id,name,to_char(date,'YYYY-MM-DD') as date,type from upcoming_exams order by date");
 
   if (ids.length === 0) {
-    return res.json({ students, subjects, entries: [], exams: [], mistakes: [], notes: [], upcomingExams });
+    return res.json({ students, subjects, entries: [], exams: [], mistakes: [], notes: [], readings: [], upcomingExams });
   }
 
   const entries = await query(
@@ -295,6 +313,12 @@ app.get("/api/state", async (req, res) => {
      from notes where student_id = any($1::uuid[]) order by date desc, created_at desc`,
     [ids]
   );
+  const readings = await query(
+    `select id,student_id as "studentId",to_char(date,'YYYY-MM-DD') as date,
+            book_title as "bookTitle",pages,note
+     from reading_entries where student_id = any($1::uuid[]) order by date desc, created_at desc`,
+    [ids]
+  );
 
   res.json({
     students,
@@ -303,6 +327,7 @@ app.get("/api/state", async (req, res) => {
     exams: exams.map(exam => ({ ...exam, details: details.filter(d => d.examId === exam.id) })),
     mistakes,
     notes,
+    readings,
     upcomingExams
   });
 });
@@ -438,6 +463,31 @@ app.put("/api/mistakes/:id", async (req, res) => {
 
 app.delete("/api/mistakes/:id", async (req, res) => {
   await query("delete from mistakes where id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+
+app.post("/api/readings", async (req, res) => {
+  const r = req.body;
+  await query(
+    "insert into reading_entries(student_id,date,book_title,pages,note) values($1,$2,$3,$4,$5)",
+    [r.studentId, r.date, r.bookTitle || "", r.pages || 0, r.note || ""]
+  );
+  res.status(201).json({ ok: true });
+});
+
+app.put("/api/readings/:id", async (req, res) => {
+  const r = req.body;
+  await query(
+    `update reading_entries
+     set student_id=$1,date=$2,book_title=$3,pages=$4,note=$5
+     where id=$6`,
+    [r.studentId, r.date, r.bookTitle || "", r.pages || 0, r.note || "", req.params.id]
+  );
+  res.json({ ok: true });
+});
+
+app.delete("/api/readings/:id", async (req, res) => {
+  await query("delete from reading_entries where id=$1", [req.params.id]);
   res.json({ ok: true });
 });
 
