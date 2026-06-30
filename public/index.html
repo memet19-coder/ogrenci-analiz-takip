@@ -276,6 +276,8 @@
     function addCountdown(ev) {
       ev.preventDefault();
       const f = Object.fromEntries(new FormData(ev.target));
+      f.name = f.name || "Geri sayım";
+      f.date = f.date || today(7);
       countdowns.push({ name: f.name, date: f.date });
       countdowns.sort((a, b) => a.date.localeCompare(b.date));
       saveCountdowns();
@@ -575,8 +577,8 @@
           <div class="panel">
             <div class="section-toolbar"><div><b>Geri Sayımlar</b><div class="muted">Hedef tarihleri hızlı takip</div></div><button class="btn" onclick="autoCountdowns()">Otomatik Oluştur</button></div>
             <form class="form-grid" onsubmit="addCountdown(event)" style="grid-template-columns:1fr 150px auto">
-              <div class="field"><label>Başlık</label><input name="name" placeholder="Örn. Matematik denemesi" required></div>
-              <div class="field"><label>Tarih</label><input name="date" type="date" value="${today(7)}" required></div>
+              <div class="field"><label>Başlık</label><input name="name" placeholder="Örn. Matematik denemesi"></div>
+              <div class="field"><label>Tarih</label><input name="date" type="date" value="${today(7)}"></div>
               <div class="field"><label>&nbsp;</label><button class="btn primary">Ekle</button></div>
             </form>
             ${renderCountdowns()}
@@ -839,12 +841,12 @@
       const s = state.students.find(x => x.id === id) || {};
       openModal(id ? "Öğrenci Düzenle" : "Öğrenci Ekle", `
         <form onsubmit="saveStudent(event,'${id || ""}')" class="form-grid">
-          <div class="field wide"><label>Ad soyad</label><input name="name" value="${s.name || ""}" required></div>
-          <div class="field"><label>Sınıf</label><select name="className" required>${classSelectOptions(s.className || "8/A")}</select></div>
-          <div class="field"><label>Hedef</label><select name="targetExam" required><option ${s.targetExam === "LGS" ? "selected" : ""}>LGS</option><option ${s.targetExam === "Okul Başarısı" ? "selected" : ""}>Okul Başarısı</option><option ${s.targetExam === "Bursluluk" ? "selected" : ""}>Bursluluk</option></select></div>
-          <div class="field"><label>Hedef net</label><input name="targetNet" type="number" value="${s.targetNet || 75}" required></div>
-          <div class="field"><label>Hedef puan</label><input name="targetScore" type="number" value="${s.targetScore || 430}" required></div>
-          <div class="field"><label>Haftalık hedef</label><input name="weeklyGoal" type="number" value="${s.weeklyGoal || 650}" required></div>
+          <div class="field wide"><label>Ad soyad</label><input name="name" value="${s.name || ""}"></div>
+          <div class="field"><label>Sınıf</label><select name="className">${classSelectOptions(s.className || "8/A")}</select></div>
+          <div class="field"><label>Hedef</label><select name="targetExam"><option ${s.targetExam === "LGS" ? "selected" : ""}>LGS</option><option ${s.targetExam === "Okul Başarısı" ? "selected" : ""}>Okul Başarısı</option><option ${s.targetExam === "Bursluluk" ? "selected" : ""}>Bursluluk</option></select></div>
+          <div class="field"><label>Hedef net</label><input name="targetNet" type="number" value="${s.targetNet || 75}"></div>
+          <div class="field"><label>Hedef puan</label><input name="targetScore" type="number" value="${s.targetScore || 430}"></div>
+          <div class="field"><label>Haftalık hedef</label><input name="weeklyGoal" type="number" value="${s.weeklyGoal || 650}"></div>
           <div class="field wide" id="studentFormError" style="display:none;color:#c5162b;font-weight:850"></div>
           <button class="btn primary" id="studentSaveBtn">Kaydet</button>
         </form>`);
@@ -862,7 +864,12 @@
         btn.textContent = "Kaydediliyor...";
       }
       const body = Object.fromEntries(new FormData(ev.target));
-      ["targetNet", "targetScore", "weeklyGoal"].forEach(k => body[k] = Number(body[k]));
+      body.name = body.name || "İsimsiz Öğrenci";
+      body.className = body.className || "8/A";
+      body.targetExam = body.targetExam || "LGS";
+      body.targetNet = Number(body.targetNet || 0);
+      body.targetScore = Number(body.targetScore || 0);
+      body.weeklyGoal = Number(body.weeklyGoal || 0);
       try {
         await api.req(id ? `/api/students/${id}` : "/api/students", { method: id ? "PUT" : "POST", body: JSON.stringify(body) });
         closeModal();
@@ -902,7 +909,7 @@
       openModal(id ? "Günlük Kaydı Düzenle" : "Günlük Kayıt", `
         <form onsubmit="saveEntry(event,'${id}')" class="form-grid">
           ${studentSelect(item.studentId)}
-          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
+          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}"></div>
           <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
           <div class="field"><label>Çalışma süresi (dk)</label><input name="studyMinutes" type="number" min="0" value="${item.studyMinutes ?? ""}" placeholder="0"></div>
           <div class="field"><label>Toplam</label><input name="total" type="number" min="0" value="${item.total ?? ""}" placeholder="0"></div>
@@ -915,6 +922,9 @@
     async function saveEntry(ev, id = "") {
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
+      b.studentId = b.studentId || activeStudentId;
+      b.date = b.date || today();
+      b.subject = b.subject || "Matematik";
       ["total", "correct", "wrong", "blank", "studyMinutes"].forEach(k => b[k] = Number(b[k] || 0));
       b.topic = b.subject;
       await api.req(id ? `/api/entries/${id}` : "/api/entries", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
@@ -927,9 +937,9 @@
       openModal(id ? "Okuma Kaydını Düzenle" : "Okuma Kaydı", `
         <form onsubmit="saveReading(event,'${id}')" class="form-grid">
           ${studentSelect(item.studentId)}
-          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
-          <div class="field wide"><label>Kitap adı</label><input name="bookTitle" value="${item.bookTitle || ""}" placeholder="Okunan kitap" required></div>
-          <div class="field"><label>Okunan sayfa</label><input name="pages" type="number" min="0" value="${item.pages ?? ""}" required></div>
+          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}"></div>
+          <div class="field wide"><label>Kitap adı</label><input name="bookTitle" value="${item.bookTitle || ""}" placeholder="Okunan kitap"></div>
+          <div class="field"><label>Okunan sayfa</label><input name="pages" type="number" min="0" value="${item.pages ?? ""}"></div>
           <div class="field wide"><label>Not</label><input name="note" value="${item.note || ""}" placeholder="İsteğe bağlı"></div>
           <button class="btn primary">Kaydet</button>
         </form>`);
@@ -937,6 +947,9 @@
     async function saveReading(ev, id = "") {
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
+      b.studentId = b.studentId || activeStudentId;
+      b.date = b.date || today();
+      b.bookTitle = b.bookTitle || "";
       b.pages = Number(b.pages || 0);
       await api.req(id ? `/api/readings/${id}` : "/api/readings", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
       closeModal();
@@ -951,10 +964,10 @@
         <form onsubmit="saveExam(event,'${id}')" class="grid">
           <div class="form-grid">
             ${studentSelect(item.studentId)}
-            <div class="field"><label>Deneme adı</label><input name="name" value="${item.name || ""}" required></div>
-            <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
-            <div class="field"><label>Tür</label><input name="type" value="${item.type || student()?.targetExam || "LGS"}" required></div>
-            <div class="field"><label>Puan</label><input name="score" type="number" value="${item.score ?? ""}" required></div>
+            <div class="field"><label>Deneme adı</label><input name="name" value="${item.name || ""}"></div>
+            <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}"></div>
+            <div class="field"><label>Tür</label><input name="type" value="${item.type || student()?.targetExam || "LGS"}"></div>
+            <div class="field"><label>Puan</label><input name="score" type="number" value="${item.score ?? ""}"></div>
           </div>
           <div class="grid two">${lessonList.map(s => {
             const d = detailFor(s);
@@ -968,9 +981,14 @@
     async function saveExam(ev, id = "") {
       ev.preventDefault();
       const f = Object.fromEntries(new FormData(ev.target));
+      f.studentId = f.studentId || activeStudentId;
+      f.name = f.name || "Deneme";
+      f.date = f.date || today();
+      f.type = f.type || "LGS";
+      f.score = Number(f.score || 0);
       const lessonList = middleSchoolSubjects;
-      const details = lessonList.map(s => ({ subject: s, total: +f[`${s}_total`], correct: +f[`${s}_correct`], wrong: +f[`${s}_wrong`], blank: +f[`${s}_blank`] }));
-      await api.req(id ? `/api/exams/${id}` : "/api/exams", { method: id ? "PUT" : "POST", body: JSON.stringify({ studentId: f.studentId, name: f.name, date: f.date, type: f.type, score: +f.score, details }) });
+      const details = lessonList.map(s => ({ subject: s, total: Number(f[`${s}_total`] || 0), correct: Number(f[`${s}_correct`] || 0), wrong: Number(f[`${s}_wrong`] || 0), blank: Number(f[`${s}_blank`] || 0) }));
+      await api.req(id ? `/api/exams/${id}` : "/api/exams", { method: id ? "PUT" : "POST", body: JSON.stringify({ studentId: f.studentId, name: f.name, date: f.date, type: f.type, score: f.score, details }) });
       closeModal();
       await load();
     }
@@ -980,9 +998,9 @@
       openModal(id ? "Yanlış Düzenle" : "Yanlış Ekle", `
         <form onsubmit="saveMistake(event,'${id}')" class="form-grid">
           ${studentSelect(item.studentId)}
-          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
+          <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}"></div>
           <div class="field"><label>Ders</label><select name="subject">${subjectOptions(item.subject)}</select></div>
-          <div class="field"><label>Konu</label><input name="topic" list="topicSuggestions" value="${item.topic || ""}" required></div>
+          <div class="field"><label>Konu</label><input name="topic" list="topicSuggestions" value="${item.topic || ""}"></div>
           <div class="field"><label>Hata türü</label><select name="type">${mistakeTypes.map(t => `<option ${t === item.type ? "selected" : ""}>${t}</option>`).join("")}</select></div>
           <div class="field"><label>Adet</label><input name="count" type="number" value="${item.count ?? 1}"></div>
           <div class="field wide"><label>Not</label><input name="note" value="${item.note || ""}"></div>
@@ -992,18 +1010,23 @@
     async function saveMistake(ev, id = "") {
       ev.preventDefault();
       const b = Object.fromEntries(new FormData(ev.target));
-      b.count = +b.count;
+      b.studentId = b.studentId || activeStudentId;
+      b.date = b.date || today();
+      b.subject = b.subject || "Matematik";
+      b.topic = b.topic || b.subject;
+      b.type = b.type || "Bilgi eksikliği";
+      b.count = Number(b.count || 0);
       await api.req(id ? `/api/mistakes/${id}` : "/api/mistakes", { method: id ? "PUT" : "POST", body: JSON.stringify(b) });
       closeModal();
       await load();
     }
 
     function openNoteForm() {
-      openModal("Öğretmen Notu", `<form onsubmit="saveNote(event)"><div class="field"><label>Not</label><textarea name="text" required></textarea></div><button class="btn primary">Kaydet</button></form>`);
+      openModal("Öğretmen Notu", `<form onsubmit="saveNote(event)"><div class="field"><label>Not</label><textarea name="text"></textarea></div><button class="btn primary">Kaydet</button></form>`);
     }
     async function saveNote(ev) {
       ev.preventDefault();
-      await api.req("/api/notes", { method: "POST", body: JSON.stringify({ studentId: activeStudentId, text: new FormData(ev.target).get("text") }) });
+      await api.req("/api/notes", { method: "POST", body: JSON.stringify({ studentId: activeStudentId, text: new FormData(ev.target).get("text") || "" }) });
       closeModal();
       await load();
     }
