@@ -93,6 +93,21 @@
     .comment-list { display: grid; gap: 10px; }
     .comment-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #fff; }
     .comment-card p { margin: 6px 0 0; }
+    .desk-grid { display: grid; grid-template-columns: minmax(260px, .9fr) minmax(280px, 1.1fr) minmax(280px, 1fr); gap: 16px; align-items: stretch; }
+    .timer-face { min-height: 118px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: #f8fbff; margin: 12px 0; }
+    .timer-face strong { font-size: 42px; letter-spacing: .02em; }
+    .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .segmented button { min-height: 34px; padding: 7px 8px; }
+    .calendar-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .calendar-grid span { min-height: 34px; display: grid; place-items: center; border-radius: 8px; font-weight: 800; font-size: 12px; }
+    .calendar-grid .weekday { min-height: 24px; color: var(--muted); background: transparent; }
+    .calendar-grid .day { background: #f8fbff; border: 1px solid #e3ebf5; }
+    .calendar-grid .today { background: #fff1f3; border-color: #e9b8be; color: var(--primary); }
+    .calendar-grid .has-entry { box-shadow: inset 0 -3px 0 #38bdf8; }
+    .countdown-list { display: grid; gap: 8px; margin-top: 12px; }
+    .countdown-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #f8fbff; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .countdown-item strong { font-size: 22px; }
     .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .wide { grid-column: span 2; }
     .field { display: grid; gap: 6px; margin-bottom: 12px; }
@@ -114,6 +129,7 @@
       .sidebar.open { transform: translateX(0); }
       .mobile-menu { display: inline-flex; }
       .grid.five, .grid.four, .grid.three, .grid.two { grid-template-columns: 1fr 1fr; }
+      .desk-grid { grid-template-columns: 1fr; }
       .insight-grid { grid-template-columns: 1fr 1fr; }
       .form-grid { grid-template-columns: 1fr 1fr; }
       .page { padding: 18px; }
@@ -158,6 +174,10 @@
     let page = "dashboard";
     let contentEl = null;
     let charts = [];
+    let pomodoroSeconds = Number(localStorage.getItem("pomodoroSeconds") || 25 * 60);
+    let pomodoroMode = localStorage.getItem("pomodoroMode") || "Odak";
+    let pomodoroTimer = null;
+    let countdowns = JSON.parse(localStorage.getItem("dashboardCountdowns") || "[]");
 
     const colors = ["#38bdf8", "#4f83f1", "#ff8b38", "#32b8e8", "#c5162b"];
     const middleSchoolSubjects = ["Matematik", "Türkçe", "Din Kültürü", "İngilizce", "Sosyal Bilimler", "Fen Bilimleri"];
@@ -170,6 +190,7 @@
       return d.toISOString().slice(0, 10);
     }
     function fmt(n) { return Number(n || 0).toLocaleString("tr-TR"); }
+    function pad(n) { return String(n).padStart(2, "0"); }
     function net(c, w) { return +(Number(c) - Number(w) / 3).toFixed(2); }
     function examNet(e) { return +(e.details || []).reduce((s, d) => s + net(d.correct, d.wrong), 0).toFixed(2); }
     function initials(n) { return n.split(" ").map(x => x[0]).join("").slice(0, 2).toLocaleUpperCase("tr-TR"); }
@@ -186,6 +207,89 @@
       const h = Math.floor(Number(minutes || 0) / 60);
       const m = Number(minutes || 0) % 60;
       return h ? `${h} sa ${m} dk` : `${m} dk`;
+    }
+    function formatClock(seconds) {
+      return `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`;
+    }
+    function savePomodoro() {
+      localStorage.setItem("pomodoroSeconds", pomodoroSeconds);
+      localStorage.setItem("pomodoroMode", pomodoroMode);
+    }
+    function renderPomodoroClock() {
+      const el = document.getElementById("pomodoroClock");
+      const mode = document.getElementById("pomodoroMode");
+      if (el) el.textContent = formatClock(pomodoroSeconds);
+      if (mode) mode.textContent = pomodoroMode;
+    }
+    function setPomodoro(minutes, mode) {
+      stopPomodoro();
+      pomodoroSeconds = minutes * 60;
+      pomodoroMode = mode;
+      savePomodoro();
+      renderPomodoroClock();
+    }
+    function startPomodoro() {
+      if (pomodoroTimer) return;
+      pomodoroTimer = setInterval(() => {
+        pomodoroSeconds = Math.max(0, pomodoroSeconds - 1);
+        savePomodoro();
+        renderPomodoroClock();
+        if (pomodoroSeconds === 0) stopPomodoro();
+      }, 1000);
+    }
+    function stopPomodoro() {
+      clearInterval(pomodoroTimer);
+      pomodoroTimer = null;
+    }
+    function resetPomodoro() {
+      setPomodoro(pomodoroMode === "Kısa Mola" ? 5 : pomodoroMode === "Uzun Mola" ? 15 : 25, pomodoroMode);
+    }
+    function daysUntil(date) {
+      const diff = dateAtNoon(date) - dateAtNoon(today());
+      return Math.max(0, Math.ceil(diff / 86400000));
+    }
+    function planningLgsDate() {
+      const now = dateAtNoon(today());
+      let year = now.getMonth() >= 5 ? now.getFullYear() + 1 : now.getFullYear();
+      return `${year}-06-01`;
+    }
+    function autoCountdowns() {
+      const endOfWeek = weekStart(0);
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      const monthEnd = dateAtNoon(today());
+      monthEnd.setMonth(monthEnd.getMonth() + 1, 0);
+      countdowns = [
+        { name: "Hafta hedefi", date: endOfWeek.toISOString().slice(0, 10) },
+        { name: "Ay sonu değerlendirme", date: monthEnd.toISOString().slice(0, 10) },
+        { name: "LGS çalışma hedefi", date: planningLgsDate() },
+        ...state.upcomingExams.slice(0, 3).map(e => ({ name: e.name, date: e.date }))
+      ];
+      localStorage.setItem("dashboardCountdowns", JSON.stringify(countdowns));
+      renderPage();
+    }
+    function renderCountdowns() {
+      if (!countdowns.length) return `<p class="muted">Sayaç oluşturmak için otomatik butona basın.</p>`;
+      return `<div class="countdown-list">${countdowns.map(c => `<div class="countdown-item"><div><b>${c.name}</b><div class="muted">${new Date(c.date + "T12:00").toLocaleDateString("tr-TR")}</div></div><strong>${daysUntil(c.date)} gün</strong></div>`).join("")}</div>`;
+    }
+    function renderMiniCalendar() {
+      const now = dateAtNoon(today());
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const first = new Date(year, month, 1);
+      const firstDay = (first.getDay() + 6) % 7;
+      const days = new Date(year, month + 1, 0).getDate();
+      const entryDays = new Set(state.entries.filter(e => {
+        const d = dateAtNoon(e.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      }).map(e => Number(e.date.slice(8, 10))));
+      const blanks = Array.from({ length: firstDay }, () => `<span></span>`).join("");
+      const cells = Array.from({ length: days }, (_, i) => {
+        const day = i + 1;
+        const classes = ["day", day === now.getDate() ? "today" : "", entryDays.has(day) ? "has-entry" : ""].filter(Boolean).join(" ");
+        return `<span class="${classes}">${day}</span>`;
+      }).join("");
+      return `<div class="calendar-head"><b>${now.toLocaleDateString("tr-TR", { month: "long", year: "numeric" })}</b><span class="badge good">${entryDays.size} kayıtlı gün</span></div>
+        <div class="calendar-grid">${["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"].map(d => `<span class="weekday">${d}</span>`).join("")}${blanks}${cells}</div>`;
     }
     function success(id) {
       const es = entries(id);
@@ -371,6 +475,7 @@
               <button data-page="dashboard">📊 Ana Ekran</button>
               <button data-page="students">👥 Öğrenciler</button>
               <button data-page="student">👤 Öğrenci Takibi</button>
+              <button data-page="coach">🎯 Takip Merkezi</button>
             </nav>
             <div class="side-title">Yönetim</div>
             <nav class="nav">
@@ -416,41 +521,61 @@
     function renderPage() {
       charts.forEach(c => c.destroy?.());
       charts = [];
-      const pages = { dashboard, students, entry, exams: examsPage, subjects, mistakes: mistakesPage, charts: chartsPage, reports, settings, student: studentPage };
+      const pages = { dashboard, students, entry, exams: examsPage, subjects, mistakes: mistakesPage, charts: chartsPage, reports, settings, student: studentPage, coach: coachPage };
       (pages[page] || dashboard)();
     }
 
     function dashboard() {
-      setTitle("Ana Ekran", "Öğrenci takip ve akademik gelişim özeti");
+      setTitle("Ana Ekran", "Günlük çalışma masası");
       const active = activeStudents();
-      const week = active.reduce((s, st) => s + weekTotal(st.id), 0);
-      const todayQ = state.entries.filter(e => e.date === today()).reduce((s, e) => s + Number(e.total), 0);
-      const riskStudents = active.map(s => ({ s, risks: riskSignals(s.id).filter(r => r.level !== "low") })).filter(x => x.risks.length);
       contentEl.innerHTML = `
-        <div class="grid four">
-          <div class="stat" style="--blob:#eef2ff"><span>👥</span><strong>${active.length}</strong><small>Aktif Öğrenci</small></div>
-          <div class="stat" style="--blob:#f5ecff"><span>✏️</span><strong>${state.entries.filter(e => e.date === today()).length}</strong><small>Bugün Girilen Kayıt</small></div>
-          <div class="stat" style="--blob:#eaf8f3"><span>📊</span><strong>${fmt(todayQ)}</strong><small>Bugün Toplam Soru</small></div>
-          <div class="stat" style="--blob:#fff5e9"><span>📈</span><strong>${fmt(week)}</strong><small>Bu Hafta Toplam Soru</small></div>
-        </div>
-        <div class="grid two" style="margin-top:18px">
+        <div class="desk-grid">
           <div class="panel">
-            <div class="section-toolbar"><div><b>Takip Gerektiren Öğrenciler</b><div class="muted">Hedef, kayıt düzeni ve deneme düşüşüne göre</div></div></div>
-            ${riskStudents.length ? `<div class="risk-list">${riskStudents.slice(0, 5).map(x => `<div class="risk-item ${x.risks[0].level === "medium" ? "medium" : ""}" onclick="activeStudentId='${x.s.id}';localStorage.setItem('activeStudentId',activeStudentId);page='student';renderPage()"><div><b>${x.s.name}</b><div class="muted">${x.risks[0].title}: ${x.risks[0].text}</div></div><span class="badge ${x.risks[0].level === "medium" ? "warn" : "bad"}">${x.risks[0].level === "medium" ? "İzle" : "Risk"}</span></div>`).join("")}</div>` : `<p class="muted">Şu anda kritik takip uyarısı yok.</p>`}
+            <div class="section-toolbar"><div><b>Pomodoro Çalışma Saati</b><div class="muted" id="pomodoroMode">${pomodoroMode}</div></div></div>
+            <div class="timer-face"><strong id="pomodoroClock">${formatClock(pomodoroSeconds)}</strong></div>
+            <div class="segmented">
+              <button class="btn" onclick="setPomodoro(25,'Odak')">25 dk</button>
+              <button class="btn" onclick="setPomodoro(5,'Kısa Mola')">5 dk</button>
+              <button class="btn" onclick="setPomodoro(15,'Uzun Mola')">15 dk</button>
+            </div>
+            <div class="actions" style="margin-top:10px">
+              <button class="btn primary" onclick="startPomodoro()">Başlat</button>
+              <button class="btn" onclick="stopPomodoro()">Duraklat</button>
+              <button class="btn" onclick="resetPomodoro()">Sıfırla</button>
+            </div>
           </div>
           <div class="panel">
-            <div class="section-toolbar"><div><b>Haftalık Sistem Özeti</b><div class="muted">Aktif öğrencilerin çalışma ritmi</div></div></div>
-            <div class="insight-grid">
-              <div class="insight-card"><strong>${fmt(week)}</strong><small>Toplam soru</small></div>
-              <div class="insight-card"><strong>${formatDuration(active.reduce((sum, st) => sum + weekStudyMinutes(st.id), 0))}</strong><small>Toplam çalışma</small></div>
-              <div class="insight-card"><strong>${riskStudents.length}</strong><small>Takip uyarısı</small></div>
-              <div class="insight-card"><strong>${active.filter(st => weeklyReport(st.id).current.progress >= 100).length}</strong><small>Hedefi tamamlayan</small></div>
-            </div>
+            <div class="section-toolbar"><div><b>Mini Takvim</b><div class="muted">Kayıt girilen günler işaretlenir</div></div></div>
+            ${renderMiniCalendar()}
+          </div>
+          <div class="panel">
+            <div class="section-toolbar"><div><b>Geri Sayımlar</b><div class="muted">Hedef tarihleri hızlı takip</div></div><button class="btn" onclick="autoCountdowns()">Otomatik Oluştur</button></div>
+            ${renderCountdowns()}
           </div>
         </div>
         <div class="section" style="margin-top:28px">
-          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif · ${archivedStudents().length} arşiv</div></div><button class="btn dark" onclick="page='student';renderPage()">Öğrenci Takibi</button></div>
+          <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif öğrenci</div></div><button class="btn dark" onclick="page='student';renderPage()">Öğrenci Takibi</button></div>
           <div class="cards" id="cards">${active.map(card).join("")}</div>
+        </div>`;
+    }
+
+    function coachPage() {
+      setTitle("Takip Merkezi", "Riskler, haftalık hedefler ve müdahale listesi");
+      const active = activeStudents();
+      const riskStudents = active.map(s => ({ s, risks: riskSignals(s.id).filter(r => r.level !== "low"), weekly: weeklyReport(s.id) })).sort((a, b) => b.risks.length - a.risks.length || a.weekly.current.progress - b.weekly.current.progress);
+      contentEl.innerHTML = `
+        <div class="grid four">
+          <div class="stat"><strong>${active.length}</strong><small>Aktif öğrenci</small></div>
+          <div class="stat"><strong>${riskStudents.filter(x => x.risks.length).length}</strong><small>Takip uyarısı</small></div>
+          <div class="stat"><strong>${active.filter(st => weeklyReport(st.id).current.progress >= 100).length}</strong><small>Hedefi tamamlayan</small></div>
+          <div class="stat"><strong>${formatDuration(active.reduce((sum, st) => sum + weekStudyMinutes(st.id), 0))}</strong><small>Bu hafta çalışma</small></div>
+        </div>
+        <div class="panel" style="margin-top:18px">
+          <div class="section-toolbar"><div><b>Risk ve Müdahale Listesi</b><div class="muted">Ana ekrandan kaldırıldı; ayrıntılı takip burada</div></div></div>
+          <div class="risk-list">${riskStudents.map(x => {
+            const first = x.risks[0] || { level: "low", title: "Takip dengeli", text: "Belirgin risk görünmüyor." };
+            return `<div class="risk-item ${first.level === "low" ? "low" : first.level === "medium" ? "medium" : ""}" onclick="activeStudentId='${x.s.id}';localStorage.setItem('activeStudentId',activeStudentId);page='student';renderPage()"><div><b>${x.s.name}</b><div class="muted">${first.title}: ${first.text}</div><div class="muted">Haftalık hedef: %${x.weekly.current.progress} · ${fmt(x.weekly.current.total)} soru</div></div><span class="badge ${first.level === "low" ? "good" : first.level === "medium" ? "warn" : "bad"}">${first.level === "low" ? "İyi" : first.level === "medium" ? "İzle" : "Risk"}</span></div>`;
+          }).join("")}</div>
         </div>`;
     }
 
