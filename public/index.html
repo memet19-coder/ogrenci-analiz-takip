@@ -160,6 +160,8 @@
     let charts = [];
 
     const colors = ["#38bdf8", "#4f83f1", "#ff8b38", "#32b8e8", "#c5162b"];
+    const middleSchoolSubjects = ["Matematik", "Türkçe", "Din Kültürü", "İngilizce", "Sosyal Bilimler", "Fen Bilimleri"];
+    const classOptions = ["5/A", "5/B", "5/C", "6/A", "6/B", "6/C", "7/A", "7/B", "7/C", "8/A", "8/B", "8/C"];
     const mistakeTypes = ["Bilgi eksikliği", "Dikkatsizlik", "İşlem hatası", "Konuyu karıştırma", "Süre yetişmedi", "Soruyu yanlış okuma", "Yorum hatası"];
 
     function today(offset = 0) {
@@ -656,18 +658,25 @@
     function studentSelect(selectedId = activeStudentId) {
       return `<div class="field"><label>Öğrenci</label><select name="studentId">${state.students.map(s => `<option value="${s.id}" ${s.id === selectedId ? "selected" : ""}>${s.name}${s.archived ? " (Arşiv)" : ""}</option>`).join("")}</select></div>`;
     }
-    function subjectOptions(selected = "") { return state.subjects.map(s => `<option ${s.name === selected ? "selected" : ""}>${s.name}</option>`).join(""); }
+    function subjectOptions(selected = "") {
+      const names = [...new Set([...middleSchoolSubjects, ...state.subjects.map(s => s.name)])].filter(name => middleSchoolSubjects.includes(name));
+      return names.map(name => `<option ${name === selected ? "selected" : ""}>${name}</option>`).join("");
+    }
+    function classSelectOptions(selected = "") {
+      const names = [...new Set([selected, ...classOptions].filter(Boolean))];
+      return names.map(name => `<option ${name === selected ? "selected" : ""}>${name}</option>`).join("");
+    }
 
     function openStudentForm(id) {
       const s = state.students.find(x => x.id === id) || {};
       openModal(id ? "Öğrenci Düzenle" : "Öğrenci Ekle", `
         <form onsubmit="saveStudent(event,'${id || ""}')" class="form-grid">
           <div class="field wide"><label>Ad soyad</label><input name="name" value="${s.name || ""}" required></div>
-          <div class="field"><label>Sınıf</label><input name="className" value="${s.className || ""}" required></div>
-          <div class="field"><label>Hedef sınav</label><input name="targetExam" value="${s.targetExam || "TYT/AYT"}" required></div>
-          <div class="field"><label>Hedef net</label><input name="targetNet" type="number" value="${s.targetNet || 70}" required></div>
-          <div class="field"><label>Hedef puan</label><input name="targetScore" type="number" value="${s.targetScore || 400}" required></div>
-          <div class="field"><label>Haftalık hedef</label><input name="weeklyGoal" type="number" value="${s.weeklyGoal || 700}" required></div>
+          <div class="field"><label>Sınıf</label><select name="className" required>${classSelectOptions(s.className || "8/A")}</select></div>
+          <div class="field"><label>Hedef</label><select name="targetExam" required><option ${s.targetExam === "LGS" ? "selected" : ""}>LGS</option><option ${s.targetExam === "Okul Başarısı" ? "selected" : ""}>Okul Başarısı</option><option ${s.targetExam === "Bursluluk" ? "selected" : ""}>Bursluluk</option></select></div>
+          <div class="field"><label>Hedef net</label><input name="targetNet" type="number" value="${s.targetNet || 75}" required></div>
+          <div class="field"><label>Hedef puan</label><input name="targetScore" type="number" value="${s.targetScore || 430}" required></div>
+          <div class="field"><label>Haftalık hedef</label><input name="weeklyGoal" type="number" value="${s.weeklyGoal || 650}" required></div>
           <button class="btn primary">Kaydet</button>
         </form>`);
     }
@@ -722,7 +731,7 @@
 
     function openExamForm(id = "") {
       const item = state.exams.find(e => e.id === id) || {};
-      const lessonList = ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce"];
+      const lessonList = middleSchoolSubjects;
       const detailFor = subject => (item.details || []).find(d => d.subject === subject) || {};
       openModal(id ? "Deneme Düzenle" : "Deneme Ekle", `
         <form onsubmit="saveExam(event,'${id}')" class="grid">
@@ -730,17 +739,22 @@
             ${studentSelect(item.studentId)}
             <div class="field"><label>Deneme adı</label><input name="name" value="${item.name || ""}" required></div>
             <div class="field"><label>Tarih</label><input name="date" type="date" value="${item.date || today()}" required></div>
-            <div class="field"><label>Tür</label><input name="type" value="${item.type || student()?.targetExam || "TYT"}" required></div>
+            <div class="field"><label>Tür</label><input name="type" value="${item.type || student()?.targetExam || "LGS"}" required></div>
             <div class="field"><label>Puan</label><input name="score" type="number" value="${item.score ?? ""}" required></div>
           </div>
-          <div class="grid two">${lessonList.map(s => { const d = detailFor(s); return `<div class="panel"><h3>${s}</h3><div class="form-grid"><div class="field"><label>Toplam</label><input name="${s}_total" type="number" value="${d.total ?? 20}"></div><div class="field"><label>Doğru</label><input name="${s}_correct" type="number" value="${d.correct ?? 12}"></div><div class="field"><label>Yanlış</label><input name="${s}_wrong" type="number" value="${d.wrong ?? 5}"></div><div class="field"><label>Boş</label><input name="${s}_blank" type="number" value="${d.blank ?? 3}"></div></div></div>` }).join("")}</div>
+          <div class="grid two">${lessonList.map(s => {
+            const d = detailFor(s);
+            const defaultTotal = ["Matematik", "Türkçe", "Fen Bilimleri"].includes(s) ? 20 : 10;
+            const defaultCorrect = defaultTotal === 20 ? 12 : 6;
+            return `<div class="panel"><h3>${s}</h3><div class="form-grid"><div class="field"><label>Toplam</label><input name="${s}_total" type="number" value="${d.total ?? defaultTotal}"></div><div class="field"><label>Doğru</label><input name="${s}_correct" type="number" value="${d.correct ?? defaultCorrect}"></div><div class="field"><label>Yanlış</label><input name="${s}_wrong" type="number" value="${d.wrong ?? 2}"></div><div class="field"><label>Boş</label><input name="${s}_blank" type="number" value="${d.blank ?? 1}"></div></div></div>`
+          }).join("")}</div>
           <button class="btn primary">Kaydet</button>
         </form>`);
     }
     async function saveExam(ev, id = "") {
       ev.preventDefault();
       const f = Object.fromEntries(new FormData(ev.target));
-      const lessonList = ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce"];
+      const lessonList = middleSchoolSubjects;
       const details = lessonList.map(s => ({ subject: s, total: +f[`${s}_total`], correct: +f[`${s}_correct`], wrong: +f[`${s}_wrong`], blank: +f[`${s}_blank`] }));
       await api.req(id ? `/api/exams/${id}` : "/api/exams", { method: id ? "PUT" : "POST", body: JSON.stringify({ studentId: f.studentId, name: f.name, date: f.date, type: f.type, score: +f.score, details }) });
       closeModal();

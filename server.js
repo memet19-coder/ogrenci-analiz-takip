@@ -104,24 +104,45 @@ async function initDb() {
   `);
   await pool.query("alter table students add column if not exists archived boolean not null default false");
   await pool.query("alter table entries add column if not exists study_minutes integer not null default 0");
+  await normalizeMiddleSchoolSubjects();
 
   const [{ count }] = await query("select count(*)::int as count from students");
   if (count === 0) await seedDb();
 }
 
+async function normalizeMiddleSchoolSubjects() {
+  const subjects = [
+    ["Türkçe", ["Paragraf", "Sözcükte anlam", "Cümlede anlam", "Dil bilgisi", "Fiilimsi"]],
+    ["Matematik", ["Doğal sayılar", "Kesirler", "Problemler", "Cebirsel ifadeler", "Geometri"]],
+    ["Fen Bilimleri", ["Kuvvet ve hareket", "Madde", "Canlılar", "Elektrik", "Mevsimler ve iklim"]],
+    ["Sosyal Bilimler", ["Kültür ve miras", "Harita okuma", "Hak ve sorumluluklar", "Üretim dağıtım tüketim", "İnsanlar ve çevre"]],
+    ["Din Kültürü", ["İbadet", "Ahlak", "Hz. Muhammed", "Kuran", "Kader inancı"]],
+    ["İngilizce", ["Vocabulary", "Reading", "Grammar", "Dialogue", "Daily routines"]]
+  ];
+  const allowed = subjects.map(([name]) => name);
+  await query("update entries set subject='Sosyal Bilimler' where subject='Sosyal Bilgiler'");
+  await query("update mistakes set subject='Sosyal Bilimler' where subject='Sosyal Bilgiler'");
+  await query("update exam_details set subject='Sosyal Bilimler' where subject='Sosyal Bilgiler'");
+  await query("update upcoming_exams set type='LGS' where type in ('TYT','TYT/AYT','AYT','YKS')");
+  await query("update students set target_exam='LGS' where target_exam in ('TYT','TYT/AYT','AYT','YKS')");
+  await query("update students set class_name='8/A' where class_name !~ '^[5-8]/'");
+  await query("delete from subjects where name <> all($1::text[])", [allowed]);
+  for (const [name, topics] of subjects) {
+    await query(
+      "insert into subjects(name, topics) values($1,$2) on conflict(name) do update set topics=excluded.topics",
+      [name, topics]
+    );
+  }
+}
+
 async function seedDb() {
   const subjects = [
-    ["Türkçe", ["Paragraf", "Sözcükte anlam", "Cümlede anlam", "Dil bilgisi"]],
-    ["Matematik", ["Problemler", "Denklemler", "Geometri", "Oran orantı"]],
-    ["Fen Bilimleri", ["Kuvvet ve hareket", "Madde", "Canlılar", "Elektrik"]],
-    ["Sosyal Bilgiler", ["İnkılaplar", "Harita bilgisi", "Kültür", "Ekonomi"]],
-    ["Tarih", ["Osmanlı", "Kurtuluş Savaşı", "Çağdaş Türk tarihi"]],
-    ["Coğrafya", ["İklim", "Nüfus", "Harita", "Bölgeler"]],
-    ["Fizik", ["Hareket", "Optik", "Elektrik", "Basınç"]],
-    ["Kimya", ["Atom", "Mol", "Asit baz", "Tepkimeler"]],
-    ["Biyoloji", ["Hücre", "Genetik", "Ekoloji", "Sistemler"]],
-    ["Din Kültürü", ["İbadet", "Ahlak", "Hz. Muhammed", "Kuran"]],
-    ["İngilizce", ["Vocabulary", "Reading", "Grammar", "Dialogue"]]
+    ["Türkçe", ["Paragraf", "Sözcükte anlam", "Cümlede anlam", "Dil bilgisi", "Fiilimsi"]],
+    ["Matematik", ["Doğal sayılar", "Kesirler", "Problemler", "Cebirsel ifadeler", "Geometri"]],
+    ["Fen Bilimleri", ["Kuvvet ve hareket", "Madde", "Canlılar", "Elektrik", "Mevsimler ve iklim"]],
+    ["Sosyal Bilimler", ["Kültür ve miras", "Harita okuma", "Hak ve sorumluluklar", "Üretim dağıtım tüketim", "İnsanlar ve çevre"]],
+    ["Din Kültürü", ["İbadet", "Ahlak", "Hz. Muhammed", "Kuran", "Kader inancı"]],
+    ["İngilizce", ["Vocabulary", "Reading", "Grammar", "Dialogue", "Daily routines"]]
   ];
 
   for (const [name, topics] of subjects) {
@@ -129,11 +150,11 @@ async function seedDb() {
   }
 
   const students = [
-    ["Arda Yılmaz", "12/A", "TYT/AYT", 85, 440, 900],
-    ["Zeynep Kaya", "12/B", "TYT/AYT", 82, 430, 850],
-    ["Can Demir", "11/C", "YKS", 76, 405, 780],
-    ["Elif Şahin", "12/D", "TYT/AYT", 80, 420, 820],
-    ["Mert Demir", "8/A", "LGS", 72, 410, 700]
+    ["Arda Yılmaz", "8/A", "LGS", 75, 430, 700],
+    ["Zeynep Kaya", "7/B", "Okul Başarısı", 72, 420, 650],
+    ["Can Demir", "6/C", "Okul Başarısı", 68, 400, 600],
+    ["Elif Şahin", "5/A", "Okul Başarısı", 70, 410, 580],
+    ["Mert Demir", "8/B", "LGS", 78, 450, 720]
   ];
 
   for (const studentData of students) {
@@ -147,13 +168,13 @@ async function seedDb() {
 
   await query(
     "insert into upcoming_exams(name,date,type) values($1,current_date + interval '5 days',$2)",
-    ["Haftalık Kazanım Denemesi", "TYT"]
+    ["Haftalık Kazanım Denemesi", "LGS"]
   );
 }
 
 async function seedStudent(student) {
-  const subjectNames = ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce", "Sosyal Bilgiler"];
-  const topics = ["Paragraf", "Problemler", "Canlılar", "Grammar", "Harita bilgisi"];
+  const subjectNames = ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce", "Sosyal Bilimler", "Din Kültürü"];
+  const topics = ["Paragraf", "Problemler", "Canlılar", "Grammar", "Harita okuma", "Ahlak"];
 
   for (let week = 5; week >= 0; week--) {
     for (let i = 0; i < subjectNames.length; i++) {
@@ -175,8 +196,8 @@ async function seedStudent(student) {
       [student.id, `${i + 1}. Genel Deneme`, 35 - i * 10, student.target_exam, 320 + i * 24]
     );
 
-    for (const subject of ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce"]) {
-      const total = subject === "Matematik" ? 20 : 15;
+    for (const subject of ["Türkçe", "Matematik", "Fen Bilimleri", "İngilizce", "Sosyal Bilimler", "Din Kültürü"]) {
+      const total = subject === "Matematik" || subject === "Türkçe" ? 20 : 10;
       const wrong = Math.max(1, 7 - i);
       const blank = Math.max(0, 3 - i);
       await query(
@@ -189,7 +210,8 @@ async function seedStudent(student) {
   for (const [subject, topic, type] of [
     ["Matematik", "Problemler", "İşlem hatası"],
     ["Türkçe", "Paragraf", "Yorum hatası"],
-    ["Fen Bilimleri", "Elektrik", "Bilgi eksikliği"]
+    ["Fen Bilimleri", "Elektrik", "Bilgi eksikliği"],
+    ["Sosyal Bilimler", "Harita okuma", "Konuyu karıştırma"]
   ]) {
     await query(
       "insert into mistakes(student_id,date,subject,topic,type,count,note) values($1,current_date,$2,$3,$4,$5,$6)",
