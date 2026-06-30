@@ -78,6 +78,21 @@
     .good { background: #e5f4eb; color: #008d62; }
     .warn { background: #fff4df; color: #c47a00; }
     .bad { background: #fdebec; color: #c84e4e; }
+    .insight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .insight-card { border: 1px solid var(--line); background: #f8fbff; border-radius: 10px; padding: 14px; min-height: 92px; }
+    .insight-card strong { display: block; font-size: 22px; margin-bottom: 6px; }
+    .risk-list { display: grid; gap: 10px; }
+    .risk-item { border: 1px solid #f0cdd1; background: #fff7f8; border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .risk-item.low { border-color: #d9eadf; background: #f5fbf7; }
+    .risk-item.medium { border-color: #f3dfb8; background: #fffaf0; }
+    .topic-map { display: flex; flex-wrap: wrap; gap: 10px; }
+    .topic-chip { border: 1px solid var(--line); border-radius: 999px; padding: 9px 12px; font-weight: 850; background: #f8fbff; }
+    .topic-chip.good { border-color: #bee5cd; background: #effaf3; color: #00754f; }
+    .topic-chip.warn { border-color: #f0d491; background: #fff8e8; color: #9a6500; }
+    .topic-chip.bad { border-color: #e9b8be; background: #fff1f3; color: #b2182b; }
+    .comment-list { display: grid; gap: 10px; }
+    .comment-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #fff; }
+    .comment-card p { margin: 6px 0 0; }
     .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .wide { grid-column: span 2; }
     .field { display: grid; gap: 6px; margin-bottom: 12px; }
@@ -99,12 +114,14 @@
       .sidebar.open { transform: translateX(0); }
       .mobile-menu { display: inline-flex; }
       .grid.five, .grid.four, .grid.three, .grid.two { grid-template-columns: 1fr 1fr; }
+      .insight-grid { grid-template-columns: 1fr 1fr; }
       .form-grid { grid-template-columns: 1fr 1fr; }
       .page { padding: 18px; }
       .search { display: none; }
     }
     @media (max-width: 680px) {
       .grid.five, .grid.four, .grid.three, .grid.two, .form-grid { grid-template-columns: 1fr; }
+      .insight-grid { grid-template-columns: 1fr; }
       .wide { grid-column: auto; }
       .topbar { padding: 10px 14px; }
       .cards { grid-template-columns: 1fr; }
@@ -195,6 +212,140 @@
         return a;
       }, {});
     }
+    function dateAtNoon(value) {
+      return new Date(`${value}T12:00`);
+    }
+    function weekStart(offset = 0) {
+      const d = dateAtNoon(today());
+      d.setDate(d.getDate() - d.getDay() + 1 + offset * 7);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    function weeklyStats(id, offset = 0) {
+      const start = weekStart(offset);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      const list = entries(id).filter(e => {
+        const d = dateAtNoon(e.date);
+        return d >= start && d < end;
+      });
+      const total = list.reduce((s, e) => s + Number(e.total), 0);
+      const study = list.reduce((s, e) => s + Number(e.studyMinutes || 0), 0);
+      const correct = list.reduce((s, e) => s + Number(e.correct), 0);
+      const wrong = list.reduce((s, e) => s + Number(e.wrong), 0);
+      const blank = list.reduce((s, e) => s + Number(e.blank), 0);
+      const st = state.students.find(s => s.id === id);
+      const goal = Number(st?.weeklyGoal || 0);
+      const progress = goal ? Math.min(999, Math.round(total / goal * 100)) : 0;
+      return { total, study, correct, wrong, blank, days: new Set(list.map(e => e.date)).size, success: total ? Math.round(correct / total * 100) : 0, goal, progress };
+    }
+    function weeklyReport(id) {
+      const current = weeklyStats(id, 0);
+      const previous = weeklyStats(id, -1);
+      const diff = current.total - previous.total;
+      const status = current.progress >= 100 ? "Hedef tamamlandı" : current.progress >= 70 ? "İyi gidiyor" : current.progress >= 40 ? "Takip edilmeli" : "Riskli";
+      return { current, previous, diff, status };
+    }
+    function riskSignals(id) {
+      const st = state.students.find(s => s.id === id);
+      const w = weeklyReport(id);
+      const list = [];
+      const recent = entries(id).sort((a, b) => b.date.localeCompare(a.date))[0];
+      const days = recent ? Math.floor((dateAtNoon(today()) - dateAtNoon(recent.date)) / 86400000) : 999;
+      if (days >= 3) list.push({ level: "high", title: "Kayıt arası açıldı", text: days === 999 ? "Henüz çalışma kaydı yok." : `${days} gündür yeni çalışma kaydı yok.` });
+      if (w.current.goal && w.current.progress < 50) list.push({ level: "high", title: "Haftalık hedef geride", text: `Hedefin yalnızca %${w.current.progress} kadarı tamamlandı.` });
+      else if (w.current.goal && w.current.progress < 80) list.push({ level: "medium", title: "Hedef yakından izlenmeli", text: `Haftalık hedef tamamlanma oranı %${w.current.progress}.` });
+      if (w.previous.total > 0 && w.diff < -100) list.push({ level: "medium", title: "Soru sayısında düşüş", text: `Geçen haftaya göre ${fmt(Math.abs(w.diff))} soru daha az.` });
+      const ex = exams(id);
+      if (ex.length >= 2) {
+        const last = examNet(ex.at(-1));
+        const prev = examNet(ex.at(-2));
+        if (last < prev) list.push({ level: "medium", title: "Deneme neti düştü", text: `Son deneme ${+(prev - last).toFixed(2)} net daha düşük.` });
+      }
+      const repeated = Object.entries(group(mistakes(id), "topic", m => m.count)).sort((a, b) => b[1] - a[1])[0];
+      if (repeated && repeated[1] >= 4) list.push({ level: "high", title: "Tekrarlayan konu hatası", text: `${repeated[0]} konusunda ${fmt(repeated[1])} hata kaydı var.` });
+      if (!list.length) list.push({ level: "low", title: "Takip dengeli", text: `${st?.name || "Öğrenci"} için şu anda belirgin risk görünmüyor.` });
+      return list;
+    }
+    function topicMap(id) {
+      const mistakeMap = group(mistakes(id), "topic", m => m.count);
+      const entryMap = entries(id).reduce((a, e) => {
+        a[e.topic] ||= { total: 0, correct: 0, subject: e.subject };
+        a[e.topic].total += Number(e.total);
+        a[e.topic].correct += Number(e.correct);
+        return a;
+      }, {});
+      const names = [...new Set([...Object.keys(mistakeMap), ...Object.keys(entryMap)])];
+      return names.map(name => {
+        const solved = entryMap[name]?.total || 0;
+        const accuracy = solved ? Math.round((entryMap[name].correct || 0) / solved * 100) : 0;
+        const errors = mistakeMap[name] || 0;
+        const level = errors >= 4 || (solved >= 20 && accuracy < 55) ? "bad" : errors >= 2 || (solved >= 20 && accuracy < 70) ? "warn" : "good";
+        return { name, solved, accuracy, errors, level, subject: entryMap[name]?.subject || "" };
+      }).sort((a, b) => {
+        const rank = { bad: 0, warn: 1, good: 2 };
+        return rank[a.level] - rank[b.level] || b.errors - a.errors;
+      });
+    }
+    function examInsight(exam, all = exams(exam.studentId)) {
+      const ordered = all.slice().sort((a, b) => a.date.localeCompare(b.date));
+      const index = ordered.findIndex(e => e.id === exam.id);
+      const previous = index > 0 ? ordered[index - 1] : null;
+      const currentNet = examNet(exam);
+      const pieces = [];
+      if (previous) {
+        const diff = +(currentNet - examNet(previous)).toFixed(2);
+        pieces.push(diff >= 0 ? `Önceki denemeye göre ${diff} net artış var.` : `Önceki denemeye göre ${Math.abs(diff)} net düşüş var.`);
+      } else {
+        pieces.push("Bu deneme karşılaştırma için başlangıç verisi olarak kullanılabilir.");
+      }
+      const weak = (exam.details || []).map(d => ({ subject: d.subject, rate: Number(d.total) ? Math.round(Number(d.correct) / Number(d.total) * 100) : 0, net: net(d.correct, d.wrong) })).sort((a, b) => a.rate - b.rate)[0];
+      if (weak) pieces.push(`${weak.subject} dersinde başarı oranı %${weak.rate}; bu alan tekrar planına alınmalı.`);
+      const blanks = (exam.details || []).reduce((s, d) => s + Number(d.blank || 0), 0);
+      if (blanks >= 5) pieces.push(`Boş sayısı ${blanks}; süre yönetimi ayrıca kontrol edilmeli.`);
+      return pieces.join(" ");
+    }
+    function reportNarrative(id) {
+      const st = state.students.find(s => s.id === id);
+      const w = weeklyReport(id);
+      const risks = riskSignals(id).filter(r => r.level !== "low");
+      const topics = topicMap(id).filter(t => t.level !== "good").slice(0, 3);
+      const ex = exams(id);
+      const last = ex.at(-1);
+      return [
+        `${st?.name || "Öğrenci"} bu hafta ${fmt(w.current.total)} soru ve ${formatDuration(w.current.study)} çalışma kaydıyla haftalık hedefinin %${w.current.progress} seviyesinde.`,
+        w.diff >= 0 ? `Soru sayısı geçen haftaya göre ${fmt(w.diff)} arttı.` : `Soru sayısı geçen haftaya göre ${fmt(Math.abs(w.diff))} azaldı.`,
+        risks.length ? `Öncelikli takip nedeni: ${risks[0].title.toLocaleLowerCase("tr-TR")}.` : "Düzenli takip açısından belirgin bir risk görünmüyor.",
+        topics.length ? `Öne çıkan eksik konular: ${topics.map(t => t.name).join(", ")}.` : "Konu haritasında kritik eksik görünmüyor.",
+        last ? `Son deneme yorumu: ${examInsight(last, ex)}` : "Deneme yorumu için henüz kayıt girilmemiş."
+      ];
+    }
+    function renderWeeklyCard(id) {
+      const r = weeklyReport(id);
+      const trend = r.diff >= 0 ? `+${fmt(r.diff)}` : `-${fmt(Math.abs(r.diff))}`;
+      return `<div class="panel">
+        <div class="section-toolbar"><div><b>Haftalık Takip Karnesi</b><div class="muted">${r.status}</div></div><span class="badge ${r.current.progress >= 80 ? "good" : r.current.progress >= 50 ? "warn" : "bad"}">%${r.current.progress}</span></div>
+        <div class="insight-grid">
+          <div class="insight-card"><strong>${fmt(r.current.total)}</strong><small>Bu hafta soru</small></div>
+          <div class="insight-card"><strong>${formatDuration(r.current.study)}</strong><small>Bu hafta çalışma</small></div>
+          <div class="insight-card"><strong>${r.current.days}</strong><small>Çalışılan gün</small></div>
+          <div class="insight-card"><strong>${trend}</strong><small>Geçen haftaya göre</small></div>
+        </div>
+      </div>`;
+    }
+    function renderRiskList(id, limit = 5) {
+      return `<div class="risk-list">${riskSignals(id).slice(0, limit).map(r => `<div class="risk-item ${r.level === "low" ? "low" : r.level === "medium" ? "medium" : ""}"><div><b>${r.title}</b><div class="muted">${r.text}</div></div><span class="badge ${r.level === "low" ? "good" : r.level === "medium" ? "warn" : "bad"}">${r.level === "low" ? "İyi" : r.level === "medium" ? "İzle" : "Risk"}</span></div>`).join("")}</div>`;
+    }
+    function renderTopicMap(id) {
+      const topics = topicMap(id);
+      if (!topics.length) return `<p class="muted">Konu haritası için çalışma veya hata kaydı ekleyin.</p>`;
+      return `<div class="topic-map">${topics.slice(0, 14).map(t => `<span class="topic-chip ${t.level}">${t.name} · ${t.errors ? `${fmt(t.errors)} hata` : `%${t.accuracy}`}</span>`).join("")}</div>`;
+    }
+    function renderExamComments(id) {
+      const list = exams(id).slice(-4).reverse();
+      if (!list.length) return `<p class="muted">Deneme yorumu için kayıt yok.</p>`;
+      return `<div class="comment-list">${list.map(e => `<div class="comment-card"><b>${e.name} · ${examNet(e)} net</b><p>${examInsight(e)}</p></div>`).join("")}</div>`;
+    }
 
     async function load() {
       state = await api.req("/api/state");
@@ -272,12 +423,28 @@
       const active = activeStudents();
       const week = active.reduce((s, st) => s + weekTotal(st.id), 0);
       const todayQ = state.entries.filter(e => e.date === today()).reduce((s, e) => s + Number(e.total), 0);
+      const riskStudents = active.map(s => ({ s, risks: riskSignals(s.id).filter(r => r.level !== "low") })).filter(x => x.risks.length);
       contentEl.innerHTML = `
         <div class="grid four">
           <div class="stat" style="--blob:#eef2ff"><span>👥</span><strong>${active.length}</strong><small>Aktif Öğrenci</small></div>
           <div class="stat" style="--blob:#f5ecff"><span>✏️</span><strong>${state.entries.filter(e => e.date === today()).length}</strong><small>Bugün Girilen Kayıt</small></div>
           <div class="stat" style="--blob:#eaf8f3"><span>📊</span><strong>${fmt(todayQ)}</strong><small>Bugün Toplam Soru</small></div>
           <div class="stat" style="--blob:#fff5e9"><span>📈</span><strong>${fmt(week)}</strong><small>Bu Hafta Toplam Soru</small></div>
+        </div>
+        <div class="grid two" style="margin-top:18px">
+          <div class="panel">
+            <div class="section-toolbar"><div><b>Takip Gerektiren Öğrenciler</b><div class="muted">Hedef, kayıt düzeni ve deneme düşüşüne göre</div></div></div>
+            ${riskStudents.length ? `<div class="risk-list">${riskStudents.slice(0, 5).map(x => `<div class="risk-item ${x.risks[0].level === "medium" ? "medium" : ""}" onclick="activeStudentId='${x.s.id}';localStorage.setItem('activeStudentId',activeStudentId);page='student';renderPage()"><div><b>${x.s.name}</b><div class="muted">${x.risks[0].title}: ${x.risks[0].text}</div></div><span class="badge ${x.risks[0].level === "medium" ? "warn" : "bad"}">${x.risks[0].level === "medium" ? "İzle" : "Risk"}</span></div>`).join("")}</div>` : `<p class="muted">Şu anda kritik takip uyarısı yok.</p>`}
+          </div>
+          <div class="panel">
+            <div class="section-toolbar"><div><b>Haftalık Sistem Özeti</b><div class="muted">Aktif öğrencilerin çalışma ritmi</div></div></div>
+            <div class="insight-grid">
+              <div class="insight-card"><strong>${fmt(week)}</strong><small>Toplam soru</small></div>
+              <div class="insight-card"><strong>${formatDuration(active.reduce((sum, st) => sum + weekStudyMinutes(st.id), 0))}</strong><small>Toplam çalışma</small></div>
+              <div class="insight-card"><strong>${riskStudents.length}</strong><small>Takip uyarısı</small></div>
+              <div class="insight-card"><strong>${active.filter(st => weeklyReport(st.id).current.progress >= 100).length}</strong><small>Hedefi tamamlayan</small></div>
+            </div>
+          </div>
         </div>
         <div class="section" style="margin-top:28px">
           <div class="section-toolbar"><div><b>👥 Öğrenciler</b><div class="muted">${active.length} aktif · ${archivedStudents().length} arşiv</div></div><button class="btn dark" onclick="page='student';renderPage()">Öğrenci Takibi</button></div>
@@ -356,12 +523,23 @@
         </div>
         <div class="panel" style="margin-top:18px"><div class="actions"><button class="btn primary" onclick="openEntryForm()">Çalışma / Soru Ekle</button><button class="btn primary" onclick="openExamForm()">Deneme Ekle</button><button class="btn primary" onclick="openMistakeForm()">Hata Ekle</button><button class="btn" onclick="openNoteForm()">Not Ekle</button><button class="btn dark" onclick="downloadStudentPdf()">PDF Rapor</button></div></div>
         <div class="grid two" style="margin-top:18px">
+          ${renderWeeklyCard(s.id)}
+          <div class="panel">
+            <div class="section-toolbar"><div><b>Risk ve Müdahale Uyarıları</b><div class="muted">Çalışma düzeni, hedef ve deneme değişimine göre</div></div></div>
+            ${renderRiskList(s.id)}
+          </div>
+        </div>
+        <div class="grid two" style="margin-top:18px">
+          <div class="panel"><h3>Konu Eksik Haritası</h3>${renderTopicMap(s.id)}</div>
+          <div class="panel"><h3>Deneme Sonrası Otomatik Yorum</h3>${renderExamComments(s.id)}</div>
+        </div>
+        <div class="grid two" style="margin-top:18px">
           <div class="panel"><h3>Deneme net gelişimi</h3><div class="chart-box"><canvas class="chart" id="examChart"></canvas></div></div>
           <div class="panel"><h3>Derslere göre çözülen soru</h3><div class="chart-box"><canvas class="chart" id="subjectChart"></canvas></div></div>
         </div>
         <div class="grid two" style="margin-top:18px">
           <div class="panel table-wrap"><h3>Çalışma ve Soru Kayıtları</h3><table><thead><tr><th>Tarih</th><th>Ders</th><th>Konu</th><th>Süre</th><th>Toplam</th><th>D/Y/B</th><th>Net</th><th></th></tr></thead><tbody>${studentEntries.map(e => `<tr><td>${e.date}</td><td>${e.subject}</td><td>${e.topic}</td><td>${formatDuration(e.studyMinutes || 0)}</td><td>${e.total}</td><td>${e.correct}/${e.wrong}/${e.blank}</td><td>${net(e.correct, e.wrong)}</td><td class="actions"><button class="btn" onclick="openEntryForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/entries/${e.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="8" class="muted">Kayıt yok.</td></tr>`}</tbody></table></div>
-          <div class="panel table-wrap"><h3>Denemeler</h3><table><thead><tr><th>Tarih</th><th>Deneme</th><th>Tür</th><th>Net</th><th>Puan</th><th></th></tr></thead><tbody>${studentExams.map(e => `<tr><td>${e.date}</td><td>${e.name}</td><td>${e.type}</td><td>${examNet(e)}</td><td>${e.score}</td><td class="actions"><button class="btn" onclick="openExamForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/exams/${e.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted">Deneme yok.</td></tr>`}</tbody></table></div>
+          <div class="panel table-wrap"><h3>Denemeler</h3><table><thead><tr><th>Tarih</th><th>Deneme</th><th>Tür</th><th>Net</th><th>Puan</th><th>Yorum</th><th></th></tr></thead><tbody>${studentExams.map(e => `<tr><td>${e.date}</td><td>${e.name}</td><td>${e.type}</td><td>${examNet(e)}</td><td>${e.score}</td><td>${examInsight(e)}</td><td class="actions"><button class="btn" onclick="openExamForm('${e.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/exams/${e.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="7" class="muted">Deneme yok.</td></tr>`}</tbody></table></div>
           <div class="panel table-wrap"><h3>Hatalar</h3><table><thead><tr><th>Tarih</th><th>Ders</th><th>Konu</th><th>Hata Türü</th><th>Adet</th><th></th></tr></thead><tbody>${studentMistakes.map(m => `<tr><td>${m.date}</td><td>${m.subject}</td><td>${m.topic}</td><td>${m.type}</td><td>${m.count}</td><td class="actions"><button class="btn" onclick="openMistakeForm('${m.id}')">Düzenle</button><button class="btn danger" onclick="deleteItem('/api/mistakes/${m.id}')">Sil</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted">Hata kaydı yok.</td></tr>`}</tbody></table></div>
           <div class="panel"><h3>Öğretmen Notları</h3>${notes().map(n => `<p><b>${n.date}</b><br>${n.text}</p>`).join("") || "<p class='muted'>Henüz not yok.</p>"}</div>
         </div>`;
@@ -443,6 +621,7 @@
     function reports() {
       const s = student();
       setTitle("Raporlar", "Yazdırılabilir gelişim özeti");
+      const narrative = s ? reportNarrative(s.id) : [];
       contentEl.innerHTML = `
         <div class="panel">
           <h3>${s?.name || ""} Gelişim Raporu</h3>
@@ -451,6 +630,8 @@
           <p>Başarı: <b>%${success(s?.id)}</b></p>
           <p>Son deneme neti: <b>${exams().at(-1) ? examNet(exams().at(-1)) : 0}</b></p>
           <p>Öne çıkan hata konuları: ${Object.keys(group(mistakes(), "topic", m => m.count)).join(", ") || "Kayıt yok"}</p>
+          <h3>Otomatik Değerlendirme</h3>
+          <ul>${narrative.map(x => `<li>${x}</li>`).join("")}</ul>
           <button class="btn primary" onclick="downloadStudentPdf()">PDF Rapor</button>
           <button class="btn" onclick="printStudentReport()">Yazdır / PDF Kaydet</button>
         </div>`;
@@ -706,9 +887,13 @@
       if (!s) return;
       const today = new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
       const safeName = htmlSafe(s.name);
+      const weekly = weeklyReport(s.id);
+      const narrativeRows = reportNarrative(s.id).map(text => `<li>${htmlSafe(text)}</li>`).join("");
+      const riskRows = riskSignals(s.id).map(r => `<tr><td>${htmlSafe(r.title)}</td><td>${htmlSafe(r.text)}</td><td>${r.level === "low" ? "İyi" : r.level === "medium" ? "İzle" : "Risk"}</td></tr>`).join("");
+      const topicRows = topicMap(s.id).slice(0, 12).map(t => `<tr><td>${htmlSafe(t.name)}</td><td>${t.level === "bad" ? "Eksik" : t.level === "warn" ? "Tekrar gerekli" : "Güçlü"}</td><td>${fmt(t.errors)} hata</td><td>${t.solved ? `%${t.accuracy}` : "-"}</td></tr>`).join("") || `<tr><td colspan="4">Kayıt yok</td></tr>`;
       const examRows = studentExams.slice(-8).reverse().map(e => `
-        <tr><td>${htmlSafe(e.date)}</td><td>${htmlSafe(e.name)}</td><td>${examNet(e)} net</td><td>${fmt(e.score)} puan</td></tr>
-      `).join("") || `<tr><td colspan="4">Kayıt yok</td></tr>`;
+        <tr><td>${htmlSafe(e.date)}</td><td>${htmlSafe(e.name)}</td><td>${examNet(e)} net</td><td>${fmt(e.score)} puan</td><td>${htmlSafe(examInsight(e))}</td></tr>
+      `).join("") || `<tr><td colspan="5">Kayıt yok</td></tr>`;
       const subjectRows = subjectTotals.map(([name, total]) => `<tr><td>${htmlSafe(name)}</td><td>${fmt(total)} soru</td></tr>`).join("") || `<tr><td colspan="2">Kayıt yok</td></tr>`;
       const mistakeRows = topicMistakes.slice(0, 10).map(([name, total]) => `<tr><td>${htmlSafe(name)}</td><td>${fmt(total)} hata</td></tr>`).join("") || `<tr><td colspan="2">Kayıt yok</td></tr>`;
       const noteRows = studentNotes.slice(0, 8).map(n => `<div class="note"><strong>${htmlSafe(n.date)}</strong><p>${htmlSafe(n.text)}</p></div>`).join("") || `<p class="muted">Not yok.</p>`;
@@ -752,6 +937,8 @@
             th { color: #526176; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
             .note { border: 1px solid #e5ecf5; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: #fbfdff; }
             .note p { margin: 5px 0 0; }
+            .analysis { margin: 12px 0 0; padding-left: 19px; line-height: 1.5; }
+            .status { display: inline-block; border-radius: 999px; padding: 5px 9px; background: #fff4df; color: #9a6500; font-weight: 700; font-size: 12px; }
             .footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid #dbe5f2; color: #7484a3; font-size: 12px; display: flex; justify-content: space-between; }
             @media print {
               body { background: #fff; }
@@ -786,6 +973,26 @@
             </section>
             <section class="grid">
               <div class="section wide">
+                <h2>Otomatik Değerlendirme</h2>
+                <ul class="analysis">${narrativeRows}</ul>
+              </div>
+              <div class="section">
+                <h2>Haftalık Takip Karnesi <span class="status">${htmlSafe(weekly.status)}</span></h2>
+                <table><tbody>
+                  <tr><td>Haftalık hedef</td><td>${fmt(weekly.current.goal)} soru</td></tr>
+                  <tr><td>Bu hafta soru</td><td>${fmt(weekly.current.total)} soru</td></tr>
+                  <tr><td>Hedef tamamlanma</td><td>%${weekly.current.progress}</td></tr>
+                  <tr><td>Bu hafta çalışma</td><td>${formatDuration(weekly.current.study)}</td></tr>
+                  <tr><td>Geçen haftaya göre</td><td>${weekly.diff >= 0 ? "+" : "-"}${fmt(Math.abs(weekly.diff))} soru</td></tr>
+                </tbody></table>
+              </div>
+              <div class="section">
+                <h2>Risk ve Müdahale Uyarıları</h2>
+                <table><thead><tr><th>Başlık</th><th>Açıklama</th><th>Durum</th></tr></thead><tbody>${riskRows}</tbody></table>
+              </div>
+            </section>
+            <section class="grid">
+              <div class="section wide">
                 <h2>Deneme Net Gelişimi</h2>
                 ${lineReportChart(studentExams)}
               </div>
@@ -802,8 +1009,12 @@
                 <table><thead><tr><th>Ders</th><th>Soru</th></tr></thead><tbody>${subjectRows}</tbody></table>
               </div>
               <div class="section">
+                <h2>Konu Eksik Haritası</h2>
+                <table><thead><tr><th>Konu</th><th>Durum</th><th>Hata</th><th>Başarı</th></tr></thead><tbody>${topicRows}</tbody></table>
+              </div>
+              <div class="section">
                 <h2>Son Denemeler</h2>
-                <table><thead><tr><th>Tarih</th><th>Deneme</th><th>Net</th><th>Puan</th></tr></thead><tbody>${examRows}</tbody></table>
+                <table><thead><tr><th>Tarih</th><th>Deneme</th><th>Net</th><th>Puan</th><th>Yorum</th></tr></thead><tbody>${examRows}</tbody></table>
               </div>
               <div class="section">
                 <h2>Hata Konuları</h2>
